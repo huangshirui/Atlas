@@ -1,0 +1,14 @@
+{
+  "name": "aisr-atlas",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm --workspace @aisr-atlas/web run dev",
+    "build": "npm --workspace @aisr-atlas/web run build",
+    "check": "npm run build"
+  }
+}

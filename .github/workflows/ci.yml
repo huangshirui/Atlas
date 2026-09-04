@@ -51,6 +51,16 @@ jobs:
       - name: Validate Domain Schema V0.1
         run: python scripts/validate-schemas.py
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install web dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Build Usable Vertical Slice V0.1
+        run: npm run build
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:
