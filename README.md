@@ -47,6 +47,7 @@ docs/
   versioning-and-layout-v0.1.md
   mcp-tool-surface-v0.1.md
   architecture.md
+  github-hardening.md
 ```
 
 ## 文档基线
@@ -56,6 +57,27 @@ docs/
 - [版本与布局规则](docs/versioning-and-layout-v0.1.md)
 - [MCP / Tool 能力边界](docs/mcp-tool-surface-v0.1.md)
 - [系统架构边界](docs/architecture.md)
+- [GitHub 公开仓库加固基线](docs/github-hardening.md)
+
+## 开源许可（License）
+
+AISR Atlas 采用 **GNU Affero General Public License v3.0 or later（GNU Affero 通用公共许可证第 3 版或更高版本）**，SPDX 标识为 `AGPL-3.0-or-later`。
+
+Copyright (C) 2026 Shirui Huang.
+
+完整许可文本见 [`LICENSE`](LICENSE)。如引入第三方代码或资产，请先确认其许可与 Attribution（署名）要求与本项目兼容。
+
+## 安全（Security）
+
+这是一个 Public Repository（公开仓库）。仓库只保存适合永久公开的源代码、公开文档和 Synthetic Data（合成数据）。不得提交真实用户数据、Secret / Credential（密钥 / 凭据）、生产日志、数据库导出、私有 Connector 输出或不应公开的线上基础设施信息。
+
+敏感漏洞不要通过公开 Issue / PR 披露，详见 [`SECURITY.md`](SECURITY.md)。Human / AI Contributor（人类 / AI 贡献者）的完整安全规则见 [`AGENTS.md`](AGENTS.md)。
+
+## 参与贡献（Contributing）
+
+提交改动前请阅读 [`AGENTS.md`](AGENTS.md) 和 [`CONTRIBUTING.md`](CONTRIBUTING.md)。领域语义变更应保持 Domain-first（领域优先），同步维护相关 Baseline Doc / Schema / Test（基线文档 / 模式 / 测试）。
+
+默认分支 `main` 的目标保护策略是 Pull Request + Required CI + Resolved Review Conversation + Squash Merge（拉取请求 + 必需持续集成 + 解决评审讨论 + 压缩合并）。仓库侧设置基线见 [`docs/github-hardening.md`](docs/github-hardening.md)。
 
 ## 当前阶段
 
