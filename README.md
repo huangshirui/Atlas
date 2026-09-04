@@ -29,6 +29,19 @@ V0.1 不追求成为完整的研发、监控或白板平台，而是先验证最
 - AI 默认读取最新草稿，不强制加载完整变更日志（Change Log）；需要追溯时再主动查询。
 - 发布（Publish）必须来自用户明确指令；AI 不得自行决定发布。
 
+## 立即体验
+
+当前仓库已经进入 **Usable Vertical Slice V0.1（可用垂直切片 V0.1）**：先把核心闭环做成可以实际操作的 Web，再通过使用反馈继续修正 Domain（领域）和交互。
+
+```bash
+npm install
+npm run dev
+```
+
+第一版体验包含 Canvas（画布）、Unit / Relationship（单元 / 关系）、Draft / Published（草稿 / 已发布）、Working Layout（工作布局）、Unit Inspector（单元检查器）、Diff（差异）和显式 Publish（发布）。
+
+当前使用 Local Storage Adapter（本地存储适配器）保存浏览器体验数据，用于尽快验证产品使用模型；它不是最终事实存储。后续会替换为 Atlas API + Cloudflare D1，同时保持 Domain 与交互语义不变。
+
 ## 仓库结构
 
 ```text
@@ -82,4 +95,4 @@ Copyright (C) 2026 Shirui Huang.
 
 ## 当前阶段
 
-当前正式进入 **Domain Schema V0.1（领域数据模式 V0.1）**：将已经冻结的人类可读 Domain Model（领域模型）落成 JSON Schema Draft 2020-12（JSON 模式 2020-12 草案）的机器契约，并用可执行样例与 CI（持续集成）验证。Schema 稳定后，再进入 `packages/domain` 的 Graph Validation（图级校验）与领域操作实现。
+当前正式进入 **Usable Vertical Slice V0.1（可用垂直切片 V0.1）**。Domain Schema V0.1（领域数据模式 V0.1）已经作为机器契约基线落下；现在优先让真实 Web 体验跑起来，在使用中验证 Canvas / Draft / Layout / Diff / Publish 等核心语义，再继续完善 API、D1、MCP 与自动 Adapter。
