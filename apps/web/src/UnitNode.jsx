@@ -1,7 +1,7 @@
 import { Handle, Position } from '@xyflow/react';
 
 export function UnitNode({ data, selected }) {
-  const { unit, changed, readOnly, hasChildren } = data;
+  const { unit, changed, hasChildren } = data;
   const isRoot = unit.parent_id === null;
 
   return (
@@ -9,9 +9,6 @@ export function UnitNode({ data, selected }) {
       {!isRoot && <Handle type="target" position={Position.Left} className="unit-handle" />}
       <div className="unit-node__header">
         <span className="unit-node__type">{unit.type}</span>
-        <span className={`unit-node__mode ${readOnly ? 'is-published' : 'is-draft'}`}>
-          {readOnly ? 'Published' : 'Draft'}
-        </span>
       </div>
       <div className="unit-node__name">{unit.name}</div>
       <div className="unit-node__id">{unit.id}</div>
