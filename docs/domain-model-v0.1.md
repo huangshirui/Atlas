@@ -145,6 +145,8 @@ Work: AI 正在修 Issue #42
 
 Facet Type 采用“核心内置 + Workspace 自定义扩展”。
 
+Machine-readable Schema（机器可读模式）中的 Facet 必须显式标记 `state_class`，取值为 `definition`、`runtime` 或 `work`，以落实 Definition / Runtime / Work（三类数据）边界。只有 `definition` Facet 进入 Draft / Revision；动态的运行事实与工作事实分别进入 Runtime State / Work State。
+
 ## 8. 视图（View）
 
 View 回答：**当前想看系统的哪一面？**
@@ -181,6 +183,8 @@ collapsed: false
 
 子 Unit 坐标优先采用相对 Parent 的坐标。
 
+Layout 必须显式绑定一个 Model Target（模型目标）：当前 Active Draft（活动草稿）或某个 Published Revision（已发布修订版本）。Active Draft 使用 Working Layout（工作布局）支持新增 Unit、拖动和发布前 Review（评审）；Published Revision 使用正式 Layout。Layout Target 不改变 Parent、Type、Containment 或 Relationship 等语义。
+
 ## 10. 草稿（Draft）与修订版本（Revision）
 
 每个 Workspace：
@@ -191,6 +195,8 @@ collapsed: false
 Draft 是可持续修改的工作副本。修改不会每次立即产生新的 Published Revision。
 
 用户明确 Publish 后，Draft 一次性形成新的 Published Revision。
+
+Active Draft 同时可以拥有 Default / Personal Working Layout（默认 / 个人工作布局）。Publish 时，当前 Draft 的工作布局与语义模型一起固化为新 Revision 的布局起点；这属于同一次 Publish 生命周期，不等同于在两个已发布 Revision 之间执行自动 Layout Migration（布局迁移）。
 
 ## 11. 三类状态数据
 
@@ -220,5 +226,5 @@ Draft 是可持续修改的工作副本。修改不会每次立即产生新的 P
 8. 每个 Workspace 只有一个活动 Draft；
 9. Publish 必须显式发生；
 10. Runtime State / Work State 变化不得制造 Definition Revision；
-11. Layout 必须与 Revision 绑定；
-12. V0.1 不迁移跨 Revision Layout。
+11. Layout 必须显式绑定 Active Draft 或 Published Revision；Draft Working Layout 只能绑定当前 Draft，Published Layout 必须绑定具体 Revision；
+12. V0.1 不在两个 Published Revision 之间自动迁移 Layout。
