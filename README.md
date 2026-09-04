@@ -40,7 +40,7 @@ packages/
   mcp/          面向 AI 的 MCP / Tool 能力
   adapters/     外部事实源适配器（V0.1 后逐步接入）
 schemas/
-  v0.1/         V0.1 机器可读 Schema（待定义）
+  v0.1/         V0.1 机器可读 Schema
 docs/
   requirements-v0.1.md
   domain-model-v0.1.md
@@ -58,6 +58,7 @@ docs/
 - [MCP / Tool 能力边界](docs/mcp-tool-surface-v0.1.md)
 - [系统架构边界](docs/architecture.md)
 - [GitHub 公开仓库加固基线](docs/github-hardening.md)
+- [V0.1 Machine-readable Schema（机器可读模式）](schemas/v0.1/README.md)
 
 ## 开源许可（License）
 
@@ -81,4 +82,4 @@ Copyright (C) 2026 Shirui Huang.
 
 ## 当前阶段
 
-当前处于 **V0.1 领域 Schema（Domain Schema）设计前的基线阶段**。下一步应先用真实 AISR 架构验证 Workspace / Unit / Containment / Relationship / Facet / Draft / Revision / Layout 等模型，再进入 Web 与 API 实现。
+当前正式进入 **Domain Schema V0.1（领域数据模式 V0.1）**：将已经冻结的人类可读 Domain Model（领域模型）落成 JSON Schema Draft 2020-12（JSON 模式 2020-12 草案）的机器契约，并用可执行样例与 CI（持续集成）验证。Schema 稳定后，再进入 `packages/domain` 的 Graph Validation（图级校验）与领域操作实现。
