@@ -85,24 +85,37 @@ function toFlowEdges(model, changedTargets) {
   }));
 }
 
-function Inspector({ unit, model, readOnly, onSave, onAdd, error }) {
+function Inspector({ unit, model, readOnly, onSave, onAdd, onClose, startAdding, error }) {
   const [form, setForm] = useState(null);
-  const [addOpen, setAddOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(startAdding);
   const [newUnit, setNewUnit] = useState({ id: 'atlas.new-unit', name: 'New Unit', type: 'component', parent_id: 'atlas' });
 
   useEffect(() => {
     setForm(unit ? { name: unit.name, type: unit.type, parent_id: unit.parent_id, description: unit.description ?? '' } : null);
   }, [unit?.id, unit?.name, unit?.type, unit?.parent_id, unit?.description]);
 
+  useEffect(() => {
+    setAddOpen(startAdding);
+  }, [startAdding]);
+
   if (!unit || !form) {
     return (
       <aside className="inspector">
-        <div className="empty-state">
-          <div className="empty-state__icon">↖</div>
-          <strong>Select a Unit（单元）</strong>
-          <span>查看语义属性；Draft（草稿）模式下可以显式修改。</span>
+        <div className="drawer-heading">
+          <div>
+            <span className="eyebrow">Unit Inspector（单元检查器）</span>
+            <strong>{startAdding ? 'Add Unit（新增单元）' : 'No Unit selected'}</strong>
+          </div>
+          <button className="icon-button" onClick={onClose} aria-label="Close inspector">×</button>
         </div>
-        {!readOnly && (
+        {!addOpen && (
+          <div className="empty-state">
+            <div className="empty-state__icon">↖</div>
+            <strong>Select a Unit（选择单元）</strong>
+            <span>点击画布中的 Unit 查看语义属性；Draft（草稿）模式下可以显式修改。</span>
+          </div>
+        )}
+        {!readOnly && !addOpen && (
           <button className="button button--secondary button--wide" onClick={() => setAddOpen(true)}>+ Add Unit（新增单元）</button>
         )}
         {addOpen && !readOnly && (
@@ -116,12 +129,15 @@ function Inspector({ unit, model, readOnly, onSave, onAdd, error }) {
 
   return (
     <aside className="inspector">
-      <div className="inspector__title-row">
+      <div className="drawer-heading inspector__title-row">
         <div>
           <span className="eyebrow">Unit Inspector（单元检查器）</span>
           <h2>{unit.name}</h2>
         </div>
-        <span className="id-pill">{unit.id}</span>
+        <div className="drawer-heading__actions">
+          <span className="id-pill">{unit.id}</span>
+          <button className="icon-button" onClick={onClose} aria-label="Close inspector">×</button>
+        </div>
       </div>
 
       <label className="field">
@@ -187,7 +203,7 @@ function AddUnitForm({ value, onChange, model, onCancel, onSubmit }) {
   );
 }
 
-function DiffPanel({ changes }) {
+function DiffPanel({ changes, onClose }) {
   return (
     <section className="diff-panel">
       <div className="diff-panel__header">
@@ -195,7 +211,10 @@ function DiffPanel({ changes }) {
           <span className="eyebrow">Published ↔ Draft</span>
           <strong>Diff（差异）</strong>
         </div>
-        <span className={`change-count ${changes.length ? 'has-changes' : ''}`}>{changes.length}</span>
+        <div className="drawer-heading__actions">
+          <span className={`change-count ${changes.length ? 'has-changes' : ''}`}>{changes.length}</span>
+          <button className="icon-button" onClick={onClose} aria-label="Close diff">×</button>
+        </div>
       </div>
       <div className="diff-panel__list">
         {changes.length === 0 ? (
@@ -215,6 +234,9 @@ function AtlasWorkbench() {
   const [state, setState] = useState(loadExperienceState);
   const [mode, setMode] = useState('draft');
   const [selectedId, setSelectedId] = useState(null);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [inspectorMode, setInspectorMode] = useState('unit');
+  const [diffOpen, setDiffOpen] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -231,8 +253,24 @@ function AtlasWorkbench() {
     setNodes(toFlowNodes(active.model, active.layout, readOnly, changedTargets));
   }, [active.model, active.layout, readOnly, changedTargets, setNodes]);
   useEffect(() => {
-    if (selectedId && !active.model.units.some((current) => current.id === selectedId)) setSelectedId(null);
+    if (selectedId && !active.model.units.some((current) => current.id === selectedId)) {
+      setSelectedId(null);
+      setInspectorOpen(false);
+    }
   }, [active.model, selectedId]);
+
+  const closeInspector = () => {
+    setInspectorOpen(false);
+    setSelectedId(null);
+    setInspectorMode('unit');
+  };
+
+  const openAddUnit = () => {
+    if (readOnly) return;
+    setSelectedId(null);
+    setInspectorMode('add');
+    setInspectorOpen(true);
+  };
 
   const commitDraftModel = (model, layout = state.draft.layout, message = 'Draft updated') => {
     const errors = validateModel(model);
@@ -285,7 +323,11 @@ function AtlasWorkbench() {
       if (!normalized.id || !normalized.name) throw new Error('Stable ID and Name are required.');
       const nextModel = addUnit(state.draft.model, normalized);
       const nextLayout = addLayoutNode(state.draft.layout, normalized.id, normalized.parent_id, state.draft.model.units.length);
-      if (commitDraftModel(nextModel, nextLayout, `Created ${normalized.id} in Draft`)) setSelectedId(normalized.id);
+      if (commitDraftModel(nextModel, nextLayout, `Created ${normalized.id} in Draft`)) {
+        setSelectedId(normalized.id);
+        setInspectorMode('unit');
+        setInspectorOpen(true);
+      }
     } catch (cause) {
       setError(cause.message);
     }
@@ -305,6 +347,7 @@ function AtlasWorkbench() {
       const next = publishExperienceState(state);
       setState(next);
       setMode('draft');
+      setDiffOpen(false);
       setNotice(`Published ${next.published.revisionId}`);
       setError('');
     } catch (cause) {
@@ -318,6 +361,9 @@ function AtlasWorkbench() {
     setState(next);
     setMode('draft');
     setSelectedId(null);
+    setInspectorOpen(false);
+    setInspectorMode('unit');
+    setDiffOpen(false);
     setNotice('Local experience data reset');
     setError('');
   };
@@ -338,6 +384,9 @@ function AtlasWorkbench() {
         </div>
         <div className="topbar__actions">
           <span className="local-badge">Local Experience（本地体验）</span>
+          <button className={`button button--secondary changes-button ${diffOpen ? 'is-active' : ''}`} onClick={() => setDiffOpen((open) => !open)}>
+            Changes（变更） · {changes.length}
+          </button>
           <button className="button button--ghost" onClick={handleReset}>Reset</button>
           <button className="button button--primary" disabled={!changes.length || mode !== 'draft'} onClick={handlePublish}>
             Publish（发布） {changes.length ? `· ${changes.length}` : ''}
@@ -345,16 +394,19 @@ function AtlasWorkbench() {
         </div>
       </header>
 
-      <main className="workspace-grid">
-        <section className="canvas-panel">
+      <main className="workspace-canvas">
+        <section className="canvas-panel canvas-panel--full">
           <div className="canvas-toolbar">
             <div>
               <span className="eyebrow">Workspace（工作区）</span>
               <strong>AISR Atlas</strong>
             </div>
-            <div className="canvas-toolbar__legend">
-              <span><i className="legend-dot legend-dot--draft" /> Definition Change（定义变更）</span>
-              <span>Drag = Layout only（拖动仅布局）</span>
+            <div className="canvas-toolbar__actions">
+              <div className="canvas-toolbar__legend">
+                <span><i className="legend-dot legend-dot--draft" /> Definition Change（定义变更）</span>
+                <span>Drag = Layout only（拖动仅布局）</span>
+              </div>
+              {!readOnly && <button className="button button--secondary" onClick={openAddUnit}>+ Add Unit（新增单元）</button>}
             </div>
           </div>
           <div className="canvas-wrap">
@@ -364,8 +416,12 @@ function AtlasWorkbench() {
               nodeTypes={nodeTypes}
               onNodesChange={onNodesChange}
               onNodeDragStop={handleNodeDragStop}
-              onNodeClick={(_event, node) => setSelectedId(node.id)}
-              onPaneClick={() => setSelectedId(null)}
+              onNodeClick={(_event, node) => {
+                setSelectedId(node.id);
+                setInspectorMode('unit');
+                setInspectorOpen(true);
+              }}
+              onPaneClick={closeInspector}
               fitView
               fitViewOptions={{ padding: 0.12 }}
               minZoom={0.25}
@@ -380,10 +436,26 @@ function AtlasWorkbench() {
           {(notice || error) && <div className={`toast ${error ? 'toast--error' : ''}`}>{error || notice}</div>}
         </section>
 
-        <div className="side-stack">
-          <Inspector unit={selectedUnit} model={active.model} readOnly={readOnly} onSave={handleSaveUnit} onAdd={handleAddUnit} error={error} />
-          <DiffPanel changes={changes} />
-        </div>
+        {inspectorOpen && (
+          <div className="workbench-drawer workbench-drawer--inspector">
+            <Inspector
+              unit={selectedUnit}
+              model={active.model}
+              readOnly={readOnly}
+              onSave={handleSaveUnit}
+              onAdd={handleAddUnit}
+              onClose={closeInspector}
+              startAdding={inspectorMode === 'add'}
+              error={error}
+            />
+          </div>
+        )}
+
+        {diffOpen && (
+          <div className={`workbench-drawer workbench-drawer--diff ${inspectorOpen ? 'has-inspector' : ''}`}>
+            <DiffPanel changes={changes} onClose={() => setDiffOpen(false)} />
+          </div>
+        )}
       </main>
     </div>
   );
