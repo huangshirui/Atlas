@@ -1,0 +1,59 @@
+{
+  "schema_version": "0.1",
+  "id": "layout.atlas.draft.default",
+  "workspace_id": "atlas",
+  "target": {
+    "kind": "draft",
+    "id": "draft.atlas.v0_1"
+  },
+  "kind": "default",
+  "owner": null,
+  "nodes": [
+    {
+      "unit_id": "atlas",
+      "x": 0,
+      "y": 0,
+      "width": 900,
+      "height": 600,
+      "collapsed": false
+    },
+    {
+      "unit_id": "atlas.web",
+      "x": 40,
+      "y": 80,
+      "width": 180,
+      "height": 90,
+      "collapsed": false
+    },
+    {
+      "unit_id": "atlas.api",
+      "x": 280,
+      "y": 80,
+      "width": 180,
+      "height": 90,
+      "collapsed": false
+    },
+    {
+      "unit_id": "atlas.domain",
+      "x": 280,
+      "y": 240,
+      "width": 180,
+      "height": 90,
+      "collapsed": false
+    },
+    {
+      "unit_id": "atlas.mcp",
+      "x": 520,
+      "y": 240,
+      "width": 180,
+      "height": 90,
+      "collapsed": false
+    }
+  ],
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1
+  },
+  "updated_at": "2026-01-01T00:00:00Z"
+}

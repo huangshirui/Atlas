@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AISR Atlas V0.1 Relationship",
+  "description": "A semantic edge between two Units. Containment is not represented here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "from_unit_id",
+    "to_unit_id",
+    "type"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.schema.json#/$defs/schemaVersion"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/stableId"
+    },
+    "from_unit_id": {
+      "$ref": "common.schema.json#/$defs/stableId"
+    },
+    "to_unit_id": {
+      "$ref": "common.schema.json#/$defs/stableId"
+    },
+    "type": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "depends_on",
+            "calls",
+            "reads",
+            "writes",
+            "publishes",
+            "subscribes",
+            "authenticates_with",
+            "delegates_to",
+            "deployed_on",
+            "observed_by"
+          ]
+        },
+        {
+          "$ref": "common.schema.json#/$defs/typeId"
+        }
+      ]
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "properties": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

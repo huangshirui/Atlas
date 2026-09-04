@@ -160,38 +160,54 @@ change_set:
 
 ## 9. Default / Personal Layout
 
-每个 Revision 独立拥有：
+每个可查看的 Model Target（模型目标）可以拥有：
 
 ```text
-Revision N
+Model Target
 ├── Default Layout
 └── Personal Layout(s)
 ```
 
 ### 默认布局（Default Layout）
 
-- 新 Revision 的初版 Default Layout 可以由 AI 生成；
+- Active Draft 的初版 Default Working Layout（默认工作布局）可以由 AI 生成；
 - 人和 AI 都可以修改；
 - 只有显式“保存为默认布局”才更新 Default Layout。
 
 ### 个人布局（Personal Layout）
 
 - 普通用户拖动优先修改 Personal Layout；
-- 可以一键恢复为 Default Layout；
+- 可以一键恢复为同一 Model Target 的 Default Layout；
 - 不影响 Canonical Model。
 
-## 10. Layout 与 Revision 绑定
+## 10. Draft Working Layout 与 Revision Layout
 
-Layout 必须绑定具体 Revision。
+Layout 必须显式绑定一个 Model Target：
 
-V0.1 明确不实现 Revision 间布局迁移：
+```text
+Layout Target
+├── Active Draft
+└── Published Revision
+```
+
+### Draft Working Layout（草稿工作布局）
+
+Active Draft 必须允许持久化 Working Layout，否则新增 Unit 在 Publish 前无法完成位置调整和 Review。Draft Working Layout 与当前 Draft 一起变化，但仍与 Canonical Model 分离；拖动只改 Layout，不改 Parent / Relationship / Type。
+
+### Publish 时固化布局
+
+Publish 形成新 Revision 时，将当前 Draft 的 Default / Personal Working Layout 固化为新 Revision 的对应 Layout 起点。这个动作属于 Draft → Revision 的同一次发布生命周期。
+
+### 不做跨 Published Revision 自动迁移
+
+V0.1 仍不实现两个 Published Revision 之间的自动 Layout Migration（布局迁移）：
 
 ```text
 Revision 18 / Layout 18
 Revision 19 / Layout 19
 ```
 
-Revision 19 不要求智能继承 Revision 18 的个人布局。这样先保证模型和行为简单、可预测。
+系统不要求在 Revision 19 生成后，再智能推断如何把 Revision 18 的布局迁移过去。新 Revision 的布局来自发布前已经与 Draft 对齐的 Working Layout，从而保持行为明确、可预测。
 
 ## 11. Dynamic / Work State
 

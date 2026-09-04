@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AISR Atlas V0.1 Draft",
+  "description": "The single mutable active Definition working copy for a Workspace. Change Log entries are stored/queryable separately.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "workspace_id",
+    "base_revision_id",
+    "model",
+    "created_at",
+    "updated_at",
+    "change_sequence"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.schema.json#/$defs/schemaVersion"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/stableId"
+    },
+    "workspace_id": {
+      "$ref": "common.schema.json#/$defs/stableId"
+    },
+    "base_revision_id": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/stableId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "model": {
+      "$ref": "canonical-model.schema.json"
+    },
+    "created_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "updated_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "change_sequence": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

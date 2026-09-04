@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AISR Atlas V0.1 Canonical Model",
+  "description": "A complete versioned semantic snapshot of one Workspace.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "workspace_id",
+    "root_unit_id",
+    "custom_types",
+    "units",
+    "relationships",
+    "facets"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.schema.json#/$defs/schemaVersion"
+    },
+    "workspace_id": {
+      "$ref": "common.schema.json#/$defs/stableId"
+    },
+    "root_unit_id": {
+      "$ref": "common.schema.json#/$defs/stableId"
+    },
+    "custom_types": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "units",
+        "relationships",
+        "facets"
+      ],
+      "properties": {
+        "units": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/customTypeDefinition"
+          },
+          "uniqueItems": true
+        },
+        "relationships": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/customTypeDefinition"
+          },
+          "uniqueItems": true
+        },
+        "facets": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/customTypeDefinition"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "units": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "unit.schema.json"
+      }
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "$ref": "relationship.schema.json"
+      }
+    },
+    "facets": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "facet.schema.json"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "state_class": {
+                "const": "definition"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

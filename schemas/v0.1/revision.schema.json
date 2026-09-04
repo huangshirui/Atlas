@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AISR Atlas V0.1 Revision",
+  "description": "An immutable published semantic snapshot for a Workspace.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "workspace_id",
+    "parent_revision_id",
+    "model",
+    "actor",
+    "source",
+    "timestamp",
+    "rationale",
+    "change_set"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.schema.json#/$defs/schemaVersion"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/stableId"
+    },
+    "workspace_id": {
+      "$ref": "common.schema.json#/$defs/stableId"
+    },
+    "parent_revision_id": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/stableId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "model": {
+      "$ref": "canonical-model.schema.json"
+    },
+    "actor": {
+      "$ref": "common.schema.json#/$defs/actor"
+    },
+    "source": {
+      "$ref": "common.schema.json#/$defs/source"
+    },
+    "timestamp": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "rationale": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "change_set": {
+      "type": "array",
+      "items": {
+        "$ref": "change-log-entry.schema.json"
+      }
+    }
+  }
+}
