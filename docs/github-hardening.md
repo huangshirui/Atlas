@@ -2,7 +2,18 @@
 
 本文记录 AISR Atlas 公开仓库（Public Repository）的 GitHub 侧安全与合并策略。它用于让仓库设置可复查、可恢复，并与代码内的 `AGENTS.md`、`SECURITY.md` 和 CI（持续集成）保持一致。
 
-> GitHub Settings（仓库设置）不完全存在于 Git 中，因此本文件是设置基线，不代表某个开关已经实际启用。实际状态需要在 GitHub UI / API 中再次核验。
+> GitHub Settings（仓库设置）不完全存在于 Git 中，因此本文件既记录目标基线，也记录已人工核验的当前状态。无法通过仓库文件直接证明的 UI 设置，应在变更后重新核验并更新本页。
+
+## 0. Current verified status（当前已核验状态）
+
+截至 2026-09-04，以下公开仓库安全设置已由仓库所有者确认启用：
+
+- Secret Scanning（密钥扫描）：Enabled（已启用）；
+- Push Protection（推送保护）：Enabled（已启用）；
+- Private Vulnerability Reporting（私密漏洞报告）：Enabled（已启用）；
+- GitHub Actions Workflow Permissions（工作流默认权限）：Read repository contents and packages（只读仓库内容与包）。
+
+同时，`Protect main` Repository Ruleset（仓库规则集）已实际启用，Required Status Checks（必需状态检查）为 `verify` 与 `secret-scan`。
 
 ## 1. Default branch protection（默认分支保护）
 
@@ -36,10 +47,12 @@ Bypass（绕过）应尽量限制为 Repository Administrator / Maintainer（仓
 
 ## 2. Secret protection（密钥保护）
 
-在 Code Security（代码安全）相关设置中启用可用的：
+在 Code Security（代码安全）相关设置中启用：
 
 - Secret Scanning（密钥扫描）；
 - Push Protection（推送保护）。
+
+当前两项均已人工核验为 Enabled（已启用）。
 
 CI 同时通过 Gitleaks 扫描完整 Git History（Git 历史）。二者用途不同：GitHub Push Protection 尽量在敏感值进入仓库前阻断；CI History Scan 用于持续发现当前树和历史中的潜在 Secret。
 
@@ -47,15 +60,16 @@ CI 同时通过 Gitleaks 扫描完整 Git History（Git 历史）。二者用途
 
 ## 3. Vulnerability reporting（漏洞报告）
 
-启用 GitHub Private Vulnerability Reporting（私密漏洞报告），使外部研究者可以不通过公开 Issue 报告敏感漏洞。
+GitHub Private Vulnerability Reporting（私密漏洞报告）已人工核验为 Enabled（已启用），外部研究者可以不通过公开 Issue 报告敏感漏洞。
 
 `SECURITY.md` 应持续告诉贡献者：敏感 Exploit Detail（漏洞利用细节）、Secret、真实日志或私人基础设施信息不得公开提交。
 
 ## 4. GitHub Actions security（GitHub Actions 安全）
 
-推荐设置：
+当前 GitHub Actions Workflow Permissions（工作流默认权限）已人工核验为 **Read repository contents and packages（只读仓库内容与包）**。
 
-- Workflow Permissions（工作流权限）默认使用 **Read repository contents and packages（只读仓库内容与包）**；
+持续要求：
+
 - 不允许 GitHub Actions 自动创建 / 批准 Pull Request，除非未来出现明确且经过 Review 的需求；
 - 每个 Workflow 显式声明最小 `permissions`；
 - 第三方 Action / Container 应尽量固定到受信任版本，关键安全工具优先 Pin Digest / Commit SHA（固定摘要 / 提交）；
@@ -119,6 +133,8 @@ Atlas 的初始目标与 `huangshirui/ALOHA-Assistant` 的公开仓库保护策�
 - `verify` + `secret-scan` CI；
 - `Protect main` Ruleset；
 - Secret Scanning + Push Protection；
+- Private Vulnerability Reporting；
+- Read-only GitHub Actions default permissions（只读 GitHub Actions 默认权限）；
 - Full-history Secret Scan（完整历史密钥扫描）。
 
 项目可以在此基线上继续加固，但不应无意降低这些边界。
