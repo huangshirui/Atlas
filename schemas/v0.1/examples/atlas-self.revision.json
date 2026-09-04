@@ -1,0 +1,103 @@
+{
+  "schema_version": "0.1",
+  "id": "rev.atlas.1",
+  "workspace_id": "atlas",
+  "parent_revision_id": null,
+  "model": {
+    "schema_version": "0.1",
+    "workspace_id": "atlas",
+    "root_unit_id": "atlas",
+    "custom_types": {
+      "units": [],
+      "relationships": [],
+      "facets": []
+    },
+    "units": [
+      {
+        "schema_version": "0.1",
+        "id": "atlas",
+        "name": "AISR Atlas",
+        "type": "system",
+        "parent_id": null,
+        "description": "System map and collaboration control plane.",
+        "declared_properties": {
+          "repository_layout": "monorepo"
+        }
+      },
+      {
+        "schema_version": "0.1",
+        "id": "atlas.web",
+        "name": "Atlas Web",
+        "type": "application",
+        "parent_id": "atlas"
+      },
+      {
+        "schema_version": "0.1",
+        "id": "atlas.api",
+        "name": "Atlas API",
+        "type": "service",
+        "parent_id": "atlas"
+      },
+      {
+        "schema_version": "0.1",
+        "id": "atlas.domain",
+        "name": "Atlas Domain",
+        "type": "component",
+        "parent_id": "atlas"
+      },
+      {
+        "schema_version": "0.1",
+        "id": "atlas.mcp",
+        "name": "Atlas MCP",
+        "type": "component",
+        "parent_id": "atlas"
+      }
+    ],
+    "relationships": [
+      {
+        "schema_version": "0.1",
+        "id": "rel.atlas.web.api",
+        "from_unit_id": "atlas.web",
+        "to_unit_id": "atlas.api",
+        "type": "calls"
+      },
+      {
+        "schema_version": "0.1",
+        "id": "rel.atlas.api.domain",
+        "from_unit_id": "atlas.api",
+        "to_unit_id": "atlas.domain",
+        "type": "depends_on"
+      },
+      {
+        "schema_version": "0.1",
+        "id": "rel.atlas.mcp.domain",
+        "from_unit_id": "atlas.mcp",
+        "to_unit_id": "atlas.domain",
+        "type": "depends_on"
+      }
+    ],
+    "facets": [
+      {
+        "schema_version": "0.1",
+        "id": "facet.atlas.architecture",
+        "unit_id": "atlas",
+        "type": "architecture",
+        "state_class": "definition",
+        "data": {
+          "role": "system-atlas"
+        }
+      }
+    ]
+  },
+  "actor": {
+    "kind": "system",
+    "id": "atlas.example"
+  },
+  "source": {
+    "kind": "import",
+    "ref": "public-repository-example"
+  },
+  "timestamp": "2026-01-01T00:00:00Z",
+  "rationale": "Public self-describing schema example.",
+  "change_set": []
+}

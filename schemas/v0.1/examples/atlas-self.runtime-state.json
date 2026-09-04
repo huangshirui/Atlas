@@ -1,0 +1,12 @@
+{
+  "schema_version": "0.1",
+  "workspace_id": "atlas",
+  "unit_id": "atlas.api",
+  "observed_at": "2026-01-01T00:00:00Z",
+  "status": "unknown",
+  "source": {
+    "kind": "system",
+    "ref": "schema-example"
+  },
+  "facets": []
+}
