@@ -24,23 +24,33 @@ V0.1 不追求成为完整的研发、监控或白板平台，而是先验证最
 
 - Atlas 的核心不是“画图”，而是维护规范系统图谱（Canonical System Graph）。
 - 模型（Model）决定“系统是什么”；视图（View）决定“当前看什么”；布局（Layout）决定“画在哪里”。
-- 画布拖动只改变布局，不隐式改变架构语义。
+- 画布拖动、调整大小和折叠只改变布局，不隐式改变架构语义。
 - 定义性数据（Definition）进入草稿 / 修订版本；运行性数据（Runtime State）和工作性数据（Work State）进入当前状态 / 事件 / 时间线。
 - AI 默认读取最新草稿，不强制加载完整变更日志（Change Log）；需要追溯时再主动查询。
 - 发布（Publish）必须来自用户明确指令；AI 不得自行决定发布。
 
 ## 立即体验
 
-当前仓库已经进入 **Usable Vertical Slice V0.1（可用垂直切片 V0.1）**：先把核心闭环做成可以实际操作的 Web，再通过使用反馈继续修正 Domain（领域）和交互。
+当前仓库已经进入 **Workbench V0.2（工作台 V0.2）**：Web 以全宽 Canvas（画布）为主工作面，Published Revision（已发布修订版本）作为日常查看态，Draft（草稿）只在修改语义时显式进入。
 
 ```bash
 npm install
 npm run dev
 ```
 
-第一版体验包含 Canvas（画布）、Unit / Relationship（单元 / 关系）、Draft / Published（草稿 / 已发布）、Working Layout（工作布局）、Unit Inspector（单元检查器）、Diff（差异）和显式 Publish（发布）。
+当前体验包含：
 
-当前使用 Local Storage Adapter（本地存储适配器）保存浏览器体验数据，用于尽快验证产品使用模型；它不是最终事实存储。后续会替换为 Atlas API + Cloudflare D1，同时保持 Domain 与交互语义不变。
+- Header（顶部栏）中的 Workspace（工作区）选择与 Published / Draft 状态；
+- 全宽 Canvas（画布）与真实多层 Atlas 自描述结构；
+- Unit（单元）拖动、Resize（调整大小）、Collapse / Expand（折叠 / 展开），均只修改 Personal Layout（个人布局）；
+- Unit Inspector（单元检查器）中的 Definition / Runtime / Work（三类状态）与 Facet（侧面）展示；
+- Draft 中新增 Unit，并通过拖线创建 Relationship（关系）；
+- Relationship Inspector（关系检查器）查看、编辑与删除关系；
+- Published ↔ Draft Diff（差异）与用户显式 Publish（发布）；
+- 浏览器 Local Storage Adapter（本地存储适配器）保存体验数据；
+- Domain behavior validation（领域行为验证）覆盖图不变量、布局语义、关系、Facet、Draft 同步与 Publish 生命周期。
+
+当前 Local Storage Adapter 仍只用于尽快验证产品使用模型；它不是最终事实存储。后续会替换为 Atlas API + Cloudflare D1，同时保持 Domain 与交互语义不变。
 
 ## 仓库结构
 
@@ -95,4 +105,4 @@ Copyright (C) 2026 Shirui Huang.
 
 ## 当前阶段
 
-当前正式进入 **Usable Vertical Slice V0.1（可用垂直切片 V0.1）**。Domain Schema V0.1（领域数据模式 V0.1）已经作为机器契约基线落下；现在优先让真实 Web 体验跑起来，在使用中验证 Canvas / Draft / Layout / Diff / Publish 等核心语义，再继续完善 API、D1、MCP 与自动 Adapter。
+当前正式进入 **Workbench V0.2（工作台 V0.2）**。Domain Schema V0.1（领域数据模式 V0.1）继续作为机器契约基线；Workbench 已开始验证完整的 Canvas / Layout / Relationship / Facet / Definition-Runtime-Work 交互，下一阶段再根据实际使用决定 API、D1、MCP 与自动 Adapter 的落地顺序。

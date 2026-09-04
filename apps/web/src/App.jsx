@@ -9,22 +9,34 @@ import {
   useNodesState,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import './published-first.css';
 import {
+  CORE_RELATIONSHIP_TYPES,
   CORE_UNIT_TYPES,
   addLayoutNode,
+  addRelationship,
   addUnit,
+  definitionFacetsForUnit,
   diffModels,
+  fitAncestorsToLayout,
   layoutEntry,
   publishExperienceState,
+  removeRelationship,
+  runtimeStateForUnit,
+  suggestRelationshipId,
+  syncDraftLayoutFromPublished,
+  toggleLayoutCollapsed,
   updateLayoutNode,
+  updateRelationship,
   updateUnit,
   validateModel,
+  validateStateReferences,
+  workStateForUnit,
 } from '@aisr-atlas/domain';
 import { UnitNode } from './UnitNode.jsx';
 import { loadExperienceState, resetExperienceState, saveExperienceState } from './storage.js';
 
 const nodeTypes = { unit: UnitNode };
+const WORKSPACE_OPTIONS = [{ id: 'atlas', name: 'Atlas' }];
 
 function depthFor(unit, model) {
   let depth = 0;
@@ -39,17 +51,46 @@ function depthFor(unit, model) {
   return depth;
 }
 
-function toFlowNodes(model, layout, semanticReadOnly, changedTargets, highlightDraftChanges) {
+function hiddenByCollapsedAncestor(unit, model, layout) {
+  let parentId = unit.parent_id;
+  const visited = new Set();
+  while (parentId) {
+    if (visited.has(parentId)) return false;
+    visited.add(parentId);
+    if (layoutEntry(layout, parentId)?.collapsed) return true;
+    parentId = model.units.find((candidate) => candidate.id === parentId)?.parent_id ?? null;
+  }
+  return false;
+}
+
+function minimumSize(unitId, model, layout) {
+  const children = model.units.filter((current) => current.parent_id === unitId);
+  if (!children.length) return { minWidth: 180, minHeight: 84 };
+  let minWidth = 280;
+  let minHeight = 180;
+  for (const child of children) {
+    const entry = layoutEntry(layout, child.id);
+    if (!entry) continue;
+    minWidth = Math.max(minWidth, entry.x + entry.width + 28);
+    minHeight = Math.max(minHeight, entry.y + entry.height + 28);
+  }
+  return { minWidth, minHeight };
+}
+
+function toFlowNodes(model, layout, semanticReadOnly, changedTargets, highlightDraftChanges, handlers) {
   const childCounts = new Map();
   for (const current of model.units) {
     if (current.parent_id) childCounts.set(current.parent_id, (childCounts.get(current.parent_id) ?? 0) + 1);
   }
 
   return [...model.units]
+    .filter((current) => !hiddenByCollapsedAncestor(current, model, layout))
     .sort((a, b) => depthFor(a, model) - depthFor(b, model))
     .map((current) => {
-      const saved = layoutEntry(layout, current.id) ?? { x: 40, y: 80, width: 220, height: 104 };
+      const saved = layoutEntry(layout, current.id) ?? { x: 40, y: 80, width: 220, height: 104, collapsed: false };
       const isRoot = current.parent_id === null;
+      const collapsed = Boolean(saved.collapsed);
+      const mins = minimumSize(current.id, model, layout);
       return {
         id: current.id,
         type: 'unit',
@@ -63,35 +104,82 @@ function toFlowNodes(model, layout, semanticReadOnly, changedTargets, highlightD
           semanticReadOnly,
           changed: highlightDraftChanges && changedTargets.has(current.id),
           hasChildren: (childCounts.get(current.id) ?? 0) > 0,
+          childCount: childCounts.get(current.id) ?? 0,
+          collapsed,
+          ...mins,
+          onResizeEnd: handlers.onResizeEnd,
+          onToggleCollapsed: handlers.onToggleCollapsed,
         },
         style: {
           width: saved.width,
-          height: saved.height,
+          height: collapsed ? 72 : saved.height,
           zIndex: isRoot ? -10 : depthFor(current, model),
         },
       };
     });
 }
 
-function toFlowEdges(model, changedTargets, highlightDraftChanges) {
-  return model.relationships.map((current) => ({
-    id: current.id,
-    source: current.from_unit_id,
-    target: current.to_unit_id,
-    type: 'smoothstep',
-    label: current.type,
-    markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
-    className: highlightDraftChanges && changedTargets.has(current.id)
-      ? 'relationship-edge is-changed'
-      : 'relationship-edge',
-    labelStyle: { fontSize: 11, fontWeight: 700 },
-  }));
+function toFlowEdges(model, visibleNodeIds, changedTargets, highlightDraftChanges) {
+  return model.relationships
+    .filter((current) => visibleNodeIds.has(current.from_unit_id) && visibleNodeIds.has(current.to_unit_id))
+    .map((current) => ({
+      id: current.id,
+      source: current.from_unit_id,
+      target: current.to_unit_id,
+      type: 'smoothstep',
+      label: current.type,
+      markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
+      className: highlightDraftChanges && changedTargets.has(current.id)
+        ? 'relationship-edge is-changed'
+        : 'relationship-edge',
+      labelStyle: { fontSize: 11, fontWeight: 700 },
+      interactionWidth: 24,
+    }));
 }
 
-function Inspector({ unit, model, semanticReadOnly, onSave, onAdd, onClose, startAdding, error }) {
+function displayValue(value) {
+  if (value === null || value === undefined) return '—';
+  if (typeof value === 'object') return JSON.stringify(value, null, 2);
+  return String(value);
+}
+
+function KeyValueData({ data }) {
+  const entries = Object.entries(data ?? {});
+  if (!entries.length) return <div className="state-empty">No data.</div>;
+  return (
+    <div className="kv-list">
+      {entries.map(([key, value]) => (
+        <div className="kv-row" key={key}>
+          <span>{key}</span>
+          <pre>{displayValue(value)}</pre>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FacetList({ facets }) {
+  if (!facets?.length) return <div className="state-empty">No facets.</div>;
+  return (
+    <div className="facet-list">
+      {facets.map((current) => (
+        <section className="facet-card" key={current.id}>
+          <div className="facet-card__heading">
+            <strong>{current.type}</strong>
+            <span>{current.state_class}</span>
+          </div>
+          <KeyValueData data={current.data} />
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function UnitInspector({ unit, model, semanticReadOnly, runtimeState, workState, onSave, onAdd, onClose, error }) {
   const [form, setForm] = useState(null);
-  const [addOpen, setAddOpen] = useState(startAdding);
-  const [newUnit, setNewUnit] = useState({ id: 'atlas.new-unit', name: 'New Unit', type: 'component', parent_id: 'atlas' });
+  const [tab, setTab] = useState('definition');
+  const [addOpen, setAddOpen] = useState(false);
+  const [newUnit, setNewUnit] = useState({ id: 'atlas.new-unit', name: 'New Unit', type: 'component', parent_id: model.root_unit_id });
 
   useEffect(() => {
     setForm(unit ? {
@@ -100,46 +188,14 @@ function Inspector({ unit, model, semanticReadOnly, onSave, onAdd, onClose, star
       parent_id: unit.parent_id,
       description: unit.description ?? '',
     } : null);
+    setTab('definition');
+    setAddOpen(false);
+    if (unit) setNewUnit((current) => ({ ...current, parent_id: unit.id }));
   }, [unit?.id, unit?.name, unit?.type, unit?.parent_id, unit?.description]);
 
-  useEffect(() => {
-    setAddOpen(startAdding);
-  }, [startAdding]);
-
-  if (!unit || !form) {
-    return (
-      <aside className="inspector">
-        <div className="drawer-heading">
-          <div>
-            <span className="eyebrow">Unit Inspector</span>
-            <strong>{startAdding ? 'Add Unit' : 'No Unit selected'}</strong>
-          </div>
-          <button className="icon-button" onClick={onClose} aria-label="Close inspector">×</button>
-        </div>
-        {!addOpen && (
-          <div className="empty-state">
-            <div className="empty-state__icon">↖</div>
-            <strong>Select a Unit</strong>
-            <span>Inspect semantic properties. Enter Draft mode to edit them.</span>
-          </div>
-        )}
-        {!semanticReadOnly && !addOpen && (
-          <button className="button button--secondary button--wide" onClick={() => setAddOpen(true)}>+ Add Unit</button>
-        )}
-        {addOpen && !semanticReadOnly && (
-          <AddUnitForm
-            value={newUnit}
-            onChange={setNewUnit}
-            model={model}
-            onCancel={() => setAddOpen(false)}
-            onSubmit={() => { onAdd(newUnit); setAddOpen(false); }}
-          />
-        )}
-      </aside>
-    );
-  }
-
+  if (!unit || !form) return null;
   const isRoot = unit.parent_id === null;
+  const definitionFacets = definitionFacetsForUnit(model, unit.id);
 
   return (
     <aside className="inspector">
@@ -154,55 +210,114 @@ function Inspector({ unit, model, semanticReadOnly, onSave, onAdd, onClose, star
         </div>
       </div>
 
-      <label className="field">
-        <span>Name</span>
-        <input disabled={semanticReadOnly} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
-      </label>
+      <div className="inspector-tabs" role="tablist">
+        {['definition', 'runtime', 'work'].map((current) => (
+          <button key={current} className={tab === current ? 'is-active' : ''} onClick={() => setTab(current)}>
+            {current[0].toUpperCase() + current.slice(1)}
+          </button>
+        ))}
+      </div>
 
-      <label className="field">
-        <span>Type</span>
-        <select disabled={semanticReadOnly} value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
-          {CORE_UNIT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
-        </select>
-      </label>
+      {tab === 'definition' && (
+        <>
+          <label className="field">
+            <span>Name</span>
+            <input disabled={semanticReadOnly} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+          </label>
+          <label className="field">
+            <span>Type</span>
+            <select disabled={semanticReadOnly} value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
+              {CORE_UNIT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+          </label>
+          <label className="field">
+            <span>Parent</span>
+            <select
+              disabled={semanticReadOnly || isRoot}
+              value={form.parent_id ?? ''}
+              onChange={(event) => setForm({ ...form, parent_id: event.target.value || null })}
+            >
+              {isRoot && <option value="">Root Unit</option>}
+              {model.units.filter((candidate) => candidate.id !== unit.id).map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>{candidate.name} · {candidate.id}</option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>Description</span>
+            <textarea disabled={semanticReadOnly} rows="3" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
+          </label>
 
-      <label className="field">
-        <span>Parent</span>
-        <select
-          disabled={semanticReadOnly || isRoot}
-          value={form.parent_id ?? ''}
-          onChange={(event) => setForm({ ...form, parent_id: event.target.value || null })}
-        >
-          {isRoot && <option value="">Root Unit</option>}
-          {model.units.filter((candidate) => candidate.id !== unit.id).map((candidate) => (
-            <option key={candidate.id} value={candidate.id}>{candidate.name} · {candidate.id}</option>
-          ))}
-        </select>
-      </label>
+          {!semanticReadOnly && (
+            <div className="inspector__actions">
+              <button className="button button--primary" onClick={() => onSave(unit, form)}>Save</button>
+              <button className="button button--secondary" onClick={() => setAddOpen((open) => !open)}>+ Child Unit</button>
+            </div>
+          )}
 
-      <label className="field">
-        <span>Description</span>
-        <textarea disabled={semanticReadOnly} rows="4" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
-      </label>
+          {addOpen && !semanticReadOnly && (
+            <AddUnitForm
+              value={newUnit}
+              onChange={setNewUnit}
+              model={model}
+              onCancel={() => setAddOpen(false)}
+              onSubmit={(value) => { onAdd(value); setAddOpen(false); }}
+            />
+          )}
 
-      {error && <div className="error-box">{error}</div>}
+          <div className="inspector-section">
+            <div className="section-heading"><strong>Definition Facets</strong><span>{definitionFacets.length}</span></div>
+            <FacetList facets={definitionFacets} />
+          </div>
+        </>
+      )}
 
-      {!semanticReadOnly && (
-        <div className="inspector__actions">
-          <button className="button button--primary" onClick={() => onSave(unit, form)}>Save</button>
-          <button className="button button--secondary" onClick={() => setAddOpen((open) => !open)}>+ Add Unit</button>
+      {tab === 'runtime' && (
+        <div className="state-panel">
+          {runtimeState ? (
+            <>
+              <div className="state-summary">
+                <span className={`status-dot status-dot--${runtimeState.status}`} />
+                <div><strong>{runtimeState.status}</strong><span>{runtimeState.observed_at}</span></div>
+              </div>
+              {runtimeState.deployment && <KeyValueData data={runtimeState.deployment} />}
+              <div className="inspector-section">
+                <div className="section-heading"><strong>Metrics</strong></div>
+                <KeyValueData data={runtimeState.metrics} />
+              </div>
+              <div className="inspector-section">
+                <div className="section-heading"><strong>Runtime Facets</strong><span>{runtimeState.facets?.length ?? 0}</span></div>
+                <FacetList facets={runtimeState.facets} />
+              </div>
+            </>
+          ) : <div className="state-empty">No runtime state for this Unit.</div>}
         </div>
       )}
 
-      {addOpen && !semanticReadOnly && (
-        <AddUnitForm
-          value={newUnit}
-          onChange={setNewUnit}
-          model={model}
-          onCancel={() => setAddOpen(false)}
-          onSubmit={() => { onAdd(newUnit); setAddOpen(false); }}
-        />
+      {tab === 'work' && (
+        <div className="state-panel">
+          {workState ? (
+            <>
+              <div className="state-summary">
+                <span className={`status-dot status-dot--${workState.status}`} />
+                <div><strong>{workState.status}</strong><span>{workState.observed_at}</span></div>
+              </div>
+              <p className="work-summary">{workState.summary}</p>
+              {workState.references?.length > 0 && (
+                <div className="reference-list">
+                  {workState.references.map((reference) => <span key={`${reference.kind}:${reference.id}`}>{reference.kind} · {reference.label ?? reference.id}</span>)}
+                </div>
+              )}
+              <div className="inspector-section">
+                <div className="section-heading"><strong>Work Facets</strong><span>{workState.facets?.length ?? 0}</span></div>
+                <FacetList facets={workState.facets} />
+              </div>
+            </>
+          ) : <div className="state-empty">No work state for this Unit.</div>}
+        </div>
       )}
+
+      {error && <div className="error-box">{error}</div>}
     </aside>
   );
 }
@@ -218,8 +333,55 @@ function AddUnitForm({ value, onChange, model, onCancel, onSubmit }) {
       <label className="field"><span>Name</span><input value={value.name} onChange={(event) => onChange({ ...value, name: event.target.value })} /></label>
       <label className="field"><span>Type</span><select value={value.type} onChange={(event) => onChange({ ...value, type: event.target.value })}>{CORE_UNIT_TYPES.map((type) => <option key={type}>{type}</option>)}</select></label>
       <label className="field"><span>Parent</span><select value={value.parent_id} onChange={(event) => onChange({ ...value, parent_id: event.target.value })}>{model.units.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name} · {candidate.id}</option>)}</select></label>
-      <button className="button button--primary button--wide" onClick={onSubmit}>Create Unit</button>
+      <button className="button button--primary button--wide" onClick={() => onSubmit(value)}>Create Unit</button>
     </div>
+  );
+}
+
+function AddUnitInspector({ model, onAdd, onClose }) {
+  const [value, setValue] = useState({ id: 'atlas.new-unit', name: 'New Unit', type: 'component', parent_id: model.root_unit_id });
+  return (
+    <aside className="inspector">
+      <div className="drawer-heading">
+        <div><span className="eyebrow">Unit Inspector</span><strong>Add Unit</strong></div>
+        <button className="icon-button" onClick={onClose} aria-label="Close inspector">×</button>
+      </div>
+      <AddUnitForm value={value} onChange={setValue} model={model} onCancel={onClose} onSubmit={onAdd} />
+    </aside>
+  );
+}
+
+function RelationshipInspector({ relationship, pending, model, semanticReadOnly, onSave, onCreate, onDelete, onClose, error }) {
+  const source = pending ?? relationship;
+  const [form, setForm] = useState(source);
+  const creating = Boolean(pending);
+
+  useEffect(() => setForm(source), [source?.id, source?.from_unit_id, source?.to_unit_id, source?.type, source?.description]);
+  if (!source || !form) return null;
+
+  return (
+    <aside className="inspector">
+      <div className="drawer-heading">
+        <div><span className="eyebrow">Relationship Inspector</span><strong>{creating ? 'New Relationship' : relationship.id}</strong></div>
+        <button className="icon-button" onClick={onClose} aria-label="Close inspector">×</button>
+      </div>
+
+      {creating && (
+        <label className="field"><span>Stable ID</span><input value={form.id} onChange={(event) => setForm({ ...form, id: event.target.value })} /></label>
+      )}
+      <label className="field"><span>From</span><select disabled={semanticReadOnly} value={form.from_unit_id} onChange={(event) => setForm({ ...form, from_unit_id: event.target.value })}>{model.units.map((unit) => <option key={unit.id} value={unit.id}>{unit.name} · {unit.id}</option>)}</select></label>
+      <label className="field"><span>To</span><select disabled={semanticReadOnly} value={form.to_unit_id} onChange={(event) => setForm({ ...form, to_unit_id: event.target.value })}>{model.units.map((unit) => <option key={unit.id} value={unit.id}>{unit.name} · {unit.id}</option>)}</select></label>
+      <label className="field"><span>Type</span><select disabled={semanticReadOnly} value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>{CORE_RELATIONSHIP_TYPES.map((type) => <option key={type}>{type}</option>)}</select></label>
+      <label className="field"><span>Description</span><textarea disabled={semanticReadOnly} rows="3" value={form.description ?? ''} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
+
+      {!semanticReadOnly && (
+        <div className="inspector__actions inspector__actions--split">
+          <button className="button button--primary" onClick={() => creating ? onCreate(form) : onSave(relationship, form)}>{creating ? 'Create' : 'Save'}</button>
+          {!creating && <button className="button button--danger" onClick={() => onDelete(relationship)}>Delete</button>}
+        </div>
+      )}
+      {error && <div className="error-box">{error}</div>}
+    </aside>
   );
 }
 
@@ -227,19 +389,14 @@ function DiffPanel({ changes, onClose }) {
   return (
     <section className="diff-panel">
       <div className="diff-panel__header">
-        <div>
-          <span className="eyebrow">Published ↔ Draft</span>
-          <strong>Changes</strong>
-        </div>
+        <div><span className="eyebrow">Published ↔ Draft</span><strong>Changes</strong></div>
         <div className="drawer-heading__actions">
           <span className={`change-count ${changes.length ? 'has-changes' : ''}`}>{changes.length}</span>
           <button className="icon-button" onClick={onClose} aria-label="Close changes">×</button>
         </div>
       </div>
       <div className="diff-panel__list">
-        {changes.length === 0 ? (
-          <div className="diff-empty">Draft matches the published revision.</div>
-        ) : changes.map((change) => (
+        {changes.length === 0 ? <div className="diff-empty">Draft matches the published revision.</div> : changes.map((change) => (
           <div className={`diff-item diff-item--${change.kind}`} key={change.id}>
             <span className="diff-item__kind">{change.kind}</span>
             <span>{change.summary}</span>
@@ -253,65 +410,123 @@ function DiffPanel({ changes, onClose }) {
 function AtlasWorkbench() {
   const [state, setState] = useState(loadExperienceState);
   const [mode, setMode] = useState('published');
-  const [selectedId, setSelectedId] = useState(null);
-  const [inspectorOpen, setInspectorOpen] = useState(false);
-  const [inspectorMode, setInspectorMode] = useState('unit');
+  const [selectedUnitId, setSelectedUnitId] = useState(null);
+  const [selectedRelationshipId, setSelectedRelationshipId] = useState(null);
+  const [pendingRelationship, setPendingRelationship] = useState(null);
+  const [inspectorMode, setInspectorMode] = useState(null);
   const [diffOpen, setDiffOpen] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
 
   const changes = useMemo(() => diffModels(state.published.model, state.draft.model), [state]);
-  const changedTargets = useMemo(() => new Set(changes.map((change) => change.target)), [changes]);
+  const changedNodeTargets = useMemo(() => new Set(changes.flatMap((change) => {
+    if (change.entity === 'unit') return [change.target];
+    if (change.entity === 'facet') return [change.after?.unit_id ?? change.before?.unit_id].filter(Boolean);
+    return [];
+  })), [changes]);
+  const changedRelationshipTargets = useMemo(() => new Set(
+    changes.filter((change) => change.entity === 'relationship').map((change) => change.target),
+  ), [changes]);
   const active = mode === 'draft' ? state.draft : state.published;
   const semanticReadOnly = mode === 'published';
   const highlightDraftChanges = mode === 'draft';
-  const edges = useMemo(
-    () => toFlowEdges(active.model, changedTargets, highlightDraftChanges),
-    [active.model, changedTargets, highlightDraftChanges],
-  );
-  const selectedUnit = active.model.units.find((current) => current.id === selectedId) ?? null;
+  const selectedUnit = active.model.units.find((current) => current.id === selectedUnitId) ?? null;
+  const selectedRelationship = active.model.relationships.find((current) => current.id === selectedRelationshipId) ?? null;
+  const runtimeState = selectedUnit ? runtimeStateForUnit(state.runtimeStates ?? [], selectedUnit.id) : null;
+  const workState = selectedUnit ? workStateForUnit(state.workStates ?? [], selectedUnit.id) : null;
+  const inspectorOpen = Boolean(inspectorMode);
+
+  const patchActiveLayout = (unitId, patch, message) => {
+    setState((current) => {
+      const target = mode === 'draft' ? current.draft : current.published;
+      const model = mode === 'draft' ? current.draft.model : current.published.model;
+      let layout = updateLayoutNode(target.layout, unitId, patch);
+      layout = fitAncestorsToLayout(layout, model, unitId);
+      return mode === 'draft'
+        ? { ...current, draft: { ...current.draft, layout } }
+        : { ...current, published: { ...current.published, layout } };
+    });
+    setNotice(message);
+  };
+
+  const handleResizeEnd = (unitId, params) => {
+    patchActiveLayout(unitId, {
+      x: params.x,
+      y: params.y,
+      width: params.width,
+      height: params.height,
+    }, `Resized ${unitId} · Personal layout only`);
+  };
+
+  const handleToggleCollapsed = (unitId) => {
+    setState((current) => {
+      const target = mode === 'draft' ? current.draft : current.published;
+      const layout = toggleLayoutCollapsed(target.layout, unitId);
+      return mode === 'draft'
+        ? { ...current, draft: { ...current.draft, layout } }
+        : { ...current, published: { ...current.published, layout } };
+    });
+    setNotice('Updated personal layout');
+  };
 
   useEffect(() => saveExperienceState(state), [state]);
   useEffect(() => {
-    setNodes(toFlowNodes(active.model, active.layout, semanticReadOnly, changedTargets, highlightDraftChanges));
-  }, [active.model, active.layout, semanticReadOnly, changedTargets, highlightDraftChanges, setNodes]);
+    const nextNodes = toFlowNodes(
+      active.model,
+      active.layout,
+      semanticReadOnly,
+      changedNodeTargets,
+      highlightDraftChanges,
+      { onResizeEnd: handleResizeEnd, onToggleCollapsed: handleToggleCollapsed },
+    );
+    setNodes(nextNodes);
+  }, [active.model, active.layout, semanticReadOnly, changedNodeTargets, highlightDraftChanges, setNodes]);
+
+  const visibleNodeIds = useMemo(() => new Set(nodes.map((node) => node.id)), [nodes]);
+  const edges = useMemo(
+    () => toFlowEdges(active.model, visibleNodeIds, changedRelationshipTargets, highlightDraftChanges),
+    [active.model, visibleNodeIds, changedRelationshipTargets, highlightDraftChanges],
+  );
+
   useEffect(() => {
-    if (selectedId && !active.model.units.some((current) => current.id === selectedId)) {
-      setSelectedId(null);
-      setInspectorOpen(false);
-    }
-  }, [active.model, selectedId]);
+    if (!notice) return undefined;
+    const timer = window.setTimeout(() => setNotice(''), 2200);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
+  useEffect(() => {
+    if (selectedUnitId && !active.model.units.some((current) => current.id === selectedUnitId)) closeInspector();
+    if (selectedRelationshipId && !active.model.relationships.some((current) => current.id === selectedRelationshipId)) closeInspector();
+  }, [active.model, selectedUnitId, selectedRelationshipId]);
 
   const closeInspector = () => {
-    setInspectorOpen(false);
-    setSelectedId(null);
-    setInspectorMode('unit');
+    setSelectedUnitId(null);
+    setSelectedRelationshipId(null);
+    setPendingRelationship(null);
+    setInspectorMode(null);
   };
 
   const enterDraft = ({ openChanges = false } = {}) => {
+    setState((current) => syncDraftLayoutFromPublished(current));
     setMode('draft');
     setDiffOpen(openChanges);
-    setInspectorMode('unit');
+    closeInspector();
     setNotice('Editing Draft');
   };
 
   const leaveDraft = () => {
     setMode('published');
     setDiffOpen(false);
-    setInspectorMode('unit');
+    closeInspector();
     setNotice('Viewing published revision');
   };
 
-  const openAddUnit = () => {
-    if (mode !== 'draft') return;
-    setSelectedId(null);
-    setInspectorMode('add');
-    setInspectorOpen(true);
-  };
-
   const commitDraftModel = (model, layout = state.draft.layout, message = 'Draft updated') => {
-    const errors = validateModel(model);
+    const errors = [
+      ...validateModel(model),
+      ...validateStateReferences(model, state.runtimeStates ?? [], state.workStates ?? []),
+    ];
     if (errors.length) {
       setError(errors[0]);
       return false;
@@ -341,13 +556,7 @@ function AtlasWorkbench() {
       let nextLayout = state.draft.layout;
       if (unit.parent_id !== form.parent_id && unit.parent_id !== null) {
         nextLayout = updateLayoutNode(nextLayout, unit.id, { x: 36, y: 84 });
-        const parent = layoutEntry(nextLayout, form.parent_id);
-        if (parent && form.parent_id !== state.draft.model.root_unit_id) {
-          nextLayout = updateLayoutNode(nextLayout, form.parent_id, {
-            width: Math.max(parent.width, 480),
-            height: Math.max(parent.height, 300),
-          });
-        }
+        nextLayout = fitAncestorsToLayout(nextLayout, nextModel, unit.id);
       }
       commitDraftModel(nextModel, nextLayout, `Saved ${unit.id}`);
     } catch (cause) {
@@ -360,11 +569,11 @@ function AtlasWorkbench() {
       const normalized = { ...input, id: input.id.trim(), name: input.name.trim() };
       if (!normalized.id || !normalized.name) throw new Error('Stable ID and Name are required.');
       const nextModel = addUnit(state.draft.model, normalized);
-      const nextLayout = addLayoutNode(state.draft.layout, normalized.id, normalized.parent_id, state.draft.model.units.length);
+      let nextLayout = addLayoutNode(state.draft.layout, normalized.id, normalized.parent_id, state.draft.model.units.length);
+      nextLayout = fitAncestorsToLayout(nextLayout, nextModel, normalized.id);
       if (commitDraftModel(nextModel, nextLayout, `Created ${normalized.id}`)) {
-        setSelectedId(normalized.id);
+        setSelectedUnitId(normalized.id);
         setInspectorMode('unit');
-        setInspectorOpen(true);
       }
     } catch (cause) {
       setError(cause.message);
@@ -373,16 +582,65 @@ function AtlasWorkbench() {
 
   const handleNodeDragStop = (_event, node) => {
     if (node.id === active.model.root_unit_id) return;
+    patchActiveLayout(node.id, { x: node.position.x, y: node.position.y }, `Moved ${node.id} · Personal layout only`);
+  };
 
-    if (mode === 'draft') {
-      const nextLayout = updateLayoutNode(state.draft.layout, node.id, { x: node.position.x, y: node.position.y });
-      setState((current) => ({ ...current, draft: { ...current.draft, layout: nextLayout } }));
-    } else {
-      const nextLayout = updateLayoutNode(state.published.layout, node.id, { x: node.position.x, y: node.position.y });
-      setState((current) => ({ ...current, published: { ...current.published, layout: nextLayout } }));
+  const handleConnect = (connection) => {
+    if (mode !== 'draft' || !connection.source || !connection.target) return;
+    const type = 'calls';
+    setPendingRelationship({
+      id: suggestRelationshipId(state.draft.model, connection.source, connection.target, type),
+      from_unit_id: connection.source,
+      to_unit_id: connection.target,
+      type,
+      description: '',
+    });
+    setSelectedUnitId(null);
+    setSelectedRelationshipId(null);
+    setInspectorMode('relationship-new');
+  };
+
+  const handleCreateRelationship = (form) => {
+    try {
+      const input = {
+        ...form,
+        id: form.id.trim(),
+        description: form.description?.trim() ?? '',
+      };
+      if (!input.id) throw new Error('Stable ID is required.');
+      const nextModel = addRelationship(state.draft.model, input);
+      if (commitDraftModel(nextModel, state.draft.layout, `Created ${input.id}`)) {
+        setPendingRelationship(null);
+        setSelectedRelationshipId(input.id);
+        setInspectorMode('relationship');
+      }
+    } catch (cause) {
+      setError(cause.message);
     }
+  };
 
-    setNotice(`Moved ${node.id} · Personal layout only`);
+  const handleSaveRelationship = (relationship, form) => {
+    try {
+      const nextModel = updateRelationship(state.draft.model, relationship.id, {
+        from_unit_id: form.from_unit_id,
+        to_unit_id: form.to_unit_id,
+        type: form.type,
+        description: form.description?.trim() ?? '',
+      });
+      commitDraftModel(nextModel, state.draft.layout, `Saved ${relationship.id}`);
+    } catch (cause) {
+      setError(cause.message);
+    }
+  };
+
+  const handleDeleteRelationship = (relationship) => {
+    if (!window.confirm(`Delete Relationship ${relationship.id}?`)) return;
+    try {
+      const nextModel = removeRelationship(state.draft.model, relationship.id);
+      if (commitDraftModel(nextModel, state.draft.layout, `Deleted ${relationship.id}`)) closeInspector();
+    } catch (cause) {
+      setError(cause.message);
+    }
   };
 
   const handlePublish = () => {
@@ -393,6 +651,7 @@ function AtlasWorkbench() {
       setState(next);
       setMode('published');
       setDiffOpen(false);
+      closeInspector();
       setNotice(`Published ${next.published.revisionId}`);
       setError('');
     } catch (cause) {
@@ -402,13 +661,10 @@ function AtlasWorkbench() {
 
   const handleReset = () => {
     if (!window.confirm('Reset local Atlas experience data?')) return;
-    const next = resetExperienceState();
-    setState(next);
+    setState(resetExperienceState());
     setMode('published');
-    setSelectedId(null);
-    setInspectorOpen(false);
-    setInspectorMode('unit');
     setDiffOpen(false);
+    closeInspector();
     setNotice('Local experience data reset');
     setError('');
   };
@@ -418,13 +674,16 @@ function AtlasWorkbench() {
       <header className="topbar">
         <div className="brand">
           <div className="brand-mark">A</div>
-          <div>
-            <strong>AISR Atlas</strong>
-            <span>System Atlas / Collaboration Control Plane</span>
-          </div>
+          <div><strong>Atlas</strong><span>System Atlas / Collaboration Control Plane</span></div>
         </div>
 
-        <div className="topbar__center">
+        <div className="topbar__context">
+          <label className="workspace-picker">
+            <span>Workspace</span>
+            <select value={state.workspaceId} onChange={() => {}} aria-label="Workspace">
+              {WORKSPACE_OPTIONS.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}
+            </select>
+          </label>
           <div className={`workspace-state ${mode === 'draft' ? 'is-draft' : ''}`}>
             <span className="workspace-state__dot" />
             <span>{mode === 'draft' ? 'Editing Draft' : 'Published'}</span>
@@ -435,21 +694,15 @@ function AtlasWorkbench() {
         <div className="topbar__actions">
           <span className="local-badge">Local Experience</span>
           {mode === 'published' ? (
-            <button
-              className={`button button--secondary ${changes.length ? 'draft-change-button' : ''}`}
-              onClick={() => enterDraft({ openChanges: changes.length > 0 })}
-            >
+            <button className={`button button--secondary ${changes.length ? 'draft-change-button' : ''}`} onClick={() => enterDraft({ openChanges: changes.length > 0 })}>
               {changes.length ? `Review Draft · ${changes.length}` : 'Edit Draft'}
             </button>
           ) : (
             <>
-              <button className="button button--ghost" onClick={leaveDraft}>Back to Published</button>
-              <button className={`button button--secondary changes-button ${diffOpen ? 'is-active' : ''}`} onClick={() => setDiffOpen((open) => !open)}>
-                Changes · {changes.length}
-              </button>
-              {changes.length > 0 && (
-                <button className="button button--primary" onClick={handlePublish}>Publish</button>
-              )}
+              <button className="button button--secondary" onClick={() => { setInspectorMode('add'); setSelectedUnitId(null); setSelectedRelationshipId(null); }}>+ Unit</button>
+              <button className="button button--ghost" onClick={leaveDraft}>Back</button>
+              <button className={`button button--secondary changes-button ${diffOpen ? 'is-active' : ''}`} onClick={() => setDiffOpen((open) => !open)}>Changes · {changes.length}</button>
+              {changes.length > 0 && <button className="button button--primary" onClick={handlePublish}>Publish</button>}
             </>
           )}
           <button className="button button--ghost" onClick={handleReset}>Reset</button>
@@ -457,63 +710,70 @@ function AtlasWorkbench() {
       </header>
 
       <main className="workspace-canvas">
-        <section className="canvas-panel canvas-panel--full">
-          <div className="canvas-toolbar">
-            <div>
-              <span className="eyebrow">Workspace</span>
-              <strong>AISR Atlas</strong>
-            </div>
-            <div className="canvas-toolbar__actions">
-              <div className="canvas-toolbar__legend">
-                {mode === 'draft' && <span><i className="legend-dot legend-dot--draft" /> Definition change</span>}
-                <span className={`canvas-mode-note ${mode === 'draft' ? 'is-draft' : ''}`}>
-                  {mode === 'draft' ? 'Editing semantics and layout' : 'Drag to adjust your personal layout'}
-                </span>
-              </div>
-              {mode === 'draft' && <button className="button button--secondary" onClick={openAddUnit}>+ Add Unit</button>}
-            </div>
-          </div>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onNodeDragStop={handleNodeDragStop}
+          onNodeClick={(_event, node) => {
+            setSelectedUnitId(node.id);
+            setSelectedRelationshipId(null);
+            setPendingRelationship(null);
+            setInspectorMode('unit');
+          }}
+          onEdgeClick={(event, edge) => {
+            event.stopPropagation();
+            setSelectedUnitId(null);
+            setSelectedRelationshipId(edge.id);
+            setPendingRelationship(null);
+            setInspectorMode('relationship');
+          }}
+          onConnect={handleConnect}
+          onPaneClick={closeInspector}
+          nodesConnectable={!semanticReadOnly}
+          fitView
+          fitViewOptions={{ padding: 0.08 }}
+          minZoom={0.2}
+          maxZoom={1.8}
+          proOptions={{ hideAttribution: false }}
+        >
+          <Background gap={24} size={1} />
+          <MiniMap pannable zoomable />
+          <Controls showInteractive={false} />
+        </ReactFlow>
 
-          <div className="canvas-wrap">
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              nodeTypes={nodeTypes}
-              onNodesChange={onNodesChange}
-              onNodeDragStop={handleNodeDragStop}
-              onNodeClick={(_event, node) => {
-                setSelectedId(node.id);
-                setInspectorMode('unit');
-                setInspectorOpen(true);
-              }}
-              onPaneClick={closeInspector}
-              fitView
-              fitViewOptions={{ padding: 0.12 }}
-              minZoom={0.25}
-              maxZoom={1.8}
-              proOptions={{ hideAttribution: false }}
-            >
-              <Background gap={24} size={1} />
-              <MiniMap pannable zoomable />
-              <Controls showInteractive={false} />
-            </ReactFlow>
-          </div>
-
-          {(notice || error) && <div className={`toast ${error ? 'toast--error' : ''}`}>{error || notice}</div>}
-        </section>
+        {(notice || error) && <div className={`toast ${error ? 'toast--error' : ''}`}>{error || notice}</div>}
 
         {inspectorOpen && (
           <div className="workbench-drawer workbench-drawer--inspector">
-            <Inspector
-              unit={selectedUnit}
-              model={active.model}
-              semanticReadOnly={semanticReadOnly}
-              onSave={handleSaveUnit}
-              onAdd={handleAddUnit}
-              onClose={closeInspector}
-              startAdding={inspectorMode === 'add'}
-              error={error}
-            />
+            {inspectorMode === 'unit' && selectedUnit && (
+              <UnitInspector
+                unit={selectedUnit}
+                model={active.model}
+                semanticReadOnly={semanticReadOnly}
+                runtimeState={runtimeState}
+                workState={workState}
+                onSave={handleSaveUnit}
+                onAdd={handleAddUnit}
+                onClose={closeInspector}
+                error={error}
+              />
+            )}
+            {inspectorMode === 'add' && mode === 'draft' && <AddUnitInspector model={state.draft.model} onAdd={handleAddUnit} onClose={closeInspector} />}
+            {(inspectorMode === 'relationship' || inspectorMode === 'relationship-new') && (
+              <RelationshipInspector
+                relationship={selectedRelationship}
+                pending={pendingRelationship}
+                model={active.model}
+                semanticReadOnly={semanticReadOnly}
+                onSave={handleSaveRelationship}
+                onCreate={handleCreateRelationship}
+                onDelete={handleDeleteRelationship}
+                onClose={closeInspector}
+                error={error}
+              />
+            )}
           </div>
         )}
 

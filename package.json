@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "npm --workspace @aisr-atlas/web run dev",
     "build": "npm --workspace @aisr-atlas/web run build",
-    "check": "npm run build"
+    "test:domain": "node scripts/validate-domain.mjs",
+    "check": "npm run test:domain && npm run build"
   }
 }

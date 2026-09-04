@@ -55,10 +55,13 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Validate Domain behavior
+        run: npm run test:domain
+
       - name: Install web dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
-      - name: Build Usable Vertical Slice V0.1
+      - name: Build Workbench V0.2
         run: npm run build
 
   secret-scan:
