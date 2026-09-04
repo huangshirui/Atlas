@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AISR Atlas V0.1 Change Log Entry",
+  "description": "One attributable semantic mutation against an active Draft.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "draft_id",
+    "sequence",
+    "actor",
+    "source",
+    "timestamp",
+    "operation",
+    "target",
+    "before",
+    "after"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.schema.json#/$defs/schemaVersion"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/stableId"
+    },
+    "draft_id": {
+      "$ref": "common.schema.json#/$defs/stableId"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "actor": {
+      "$ref": "common.schema.json#/$defs/actor"
+    },
+    "source": {
+      "$ref": "common.schema.json#/$defs/source"
+    },
+    "timestamp": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "operation": {
+      "type": "string",
+      "enum": [
+        "create",
+        "update",
+        "delete"
+      ]
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "unit",
+            "relationship",
+            "facet",
+            "unit-type",
+            "relationship-type",
+            "facet-type"
+          ]
+        },
+        "id": {
+          "$ref": "common.schema.json#/$defs/stableId"
+        },
+        "path": {
+          "type": "string",
+          "description": "Optional JSON Pointer-like path for a field-level change.",
+          "maxLength": 500
+        }
+      }
+    },
+    "before": {},
+    "after": {},
+    "rationale": {
+      "type": "string",
+      "maxLength": 4000
+    }
+  }
+}

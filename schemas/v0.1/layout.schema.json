@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AISR Atlas V0.1 Layout",
+  "description": "Model-target-bound visual state. It never changes semantic Parent, Type, Containment, or Relationship.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "workspace_id",
+    "target",
+    "kind",
+    "owner",
+    "nodes",
+    "viewport",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.schema.json#/$defs/schemaVersion"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/stableId"
+    },
+    "workspace_id": {
+      "$ref": "common.schema.json#/$defs/stableId"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "default",
+        "personal"
+      ]
+    },
+    "owner": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/actor"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "unit_id",
+          "x",
+          "y",
+          "width",
+          "height",
+          "collapsed"
+        ],
+        "properties": {
+          "unit_id": {
+            "$ref": "common.schema.json#/$defs/stableId"
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "width": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "height": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "collapsed": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "viewport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y",
+        "zoom"
+      ],
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "zoom": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "updated_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "revision"
+          ]
+        },
+        "id": {
+          "$ref": "common.schema.json#/$defs/stableId"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "default"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "owner": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "personal"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "owner": {
+            "$ref": "common.schema.json#/$defs/actor"
+          }
+        }
+      }
+    }
+  ]
+}

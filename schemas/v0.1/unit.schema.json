@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AISR Atlas V0.1 Unit",
+  "description": "A single semantic Unit in the Canonical System Graph.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "type",
+    "parent_id"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.schema.json#/$defs/schemaVersion"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/stableId"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "type": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "system",
+            "project",
+            "application",
+            "service",
+            "component",
+            "agent",
+            "workflow",
+            "runtime",
+            "datastore",
+            "external-system"
+          ]
+        },
+        {
+          "$ref": "common.schema.json#/$defs/typeId"
+        }
+      ]
+    },
+    "parent_id": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/stableId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "declared_properties": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

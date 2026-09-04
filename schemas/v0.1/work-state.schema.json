@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AISR Atlas V0.1 Work State",
+  "description": "Current human/AI work state for one Unit. Updating it does not create a Definition Revision.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "workspace_id",
+    "unit_id",
+    "observed_at",
+    "status",
+    "summary",
+    "actors",
+    "references",
+    "source",
+    "facets"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.schema.json#/$defs/schemaVersion"
+    },
+    "workspace_id": {
+      "$ref": "common.schema.json#/$defs/stableId"
+    },
+    "unit_id": {
+      "$ref": "common.schema.json#/$defs/stableId"
+    },
+    "observed_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "idle",
+        "planned",
+        "active",
+        "blocked",
+        "reviewing",
+        "done"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "actors": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/actor"
+      }
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/reference"
+      }
+    },
+    "source": {
+      "$ref": "common.schema.json#/$defs/source"
+    },
+    "facets": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "facet.schema.json"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "state_class": {
+                "const": "work"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
