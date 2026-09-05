@@ -10,6 +10,7 @@
     "dev": "npm --workspace @aisr-atlas/web run dev",
     "build": "npm --workspace @aisr-atlas/web run build",
     "test:domain": "node scripts/validate-domain.mjs",
-    "check": "npm run test:domain && npm run build"
+    "test:online": "node --check apps/api/src/index.js && node --check apps/api/src/state.js && node scripts/validate-online-experience.mjs",
+    "check": "npm run test:domain && npm run test:online && npm run build"
   }
 }

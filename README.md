@@ -31,11 +31,17 @@ V0.1 不追求成为完整的研发、监控或白板平台，而是先验证最
 
 ## 立即体验
 
-当前仓库已经进入 **Workbench V0.2（工作台 V0.2）**：Web 以全宽 Canvas（画布）为主工作面，Published Revision（已发布修订版本）作为日常查看态，Draft（草稿）只在修改语义时显式进入。
+当前正式进入 **Online Experience V0.3（在线体验 V0.3）**。Workbench V0.2（工作台 V0.2）已经完成 Canvas-first（画布优先）的核心交互，本阶段开始把浏览器本地体验接到真实的 Atlas API + Cloudflare D1 持久化链路。
 
 ```bash
 npm install
 npm run dev
+```
+
+普通本地开发继续使用 Local Storage Adapter（本地存储适配器），不依赖 Cloudflare。在线构建显式启用 Remote API Adapter（远程 API 适配器）：
+
+```bash
+VITE_ATLAS_PERSISTENCE=remote npm run build
 ```
 
 当前体验包含：
@@ -47,10 +53,12 @@ npm run dev
 - Draft 中新增 Unit，并通过拖线创建 Relationship（关系）；
 - Relationship Inspector（关系检查器）查看、编辑与删除关系；
 - Published ↔ Draft Diff（差异）与用户显式 Publish（发布）；
-- 浏览器 Local Storage Adapter（本地存储适配器）保存体验数据；
-- Domain behavior validation（领域行为验证）覆盖图不变量、布局语义、关系、Facet、Draft 同步与 Publish 生命周期。
+- Local Storage Adapter 用于无需云资源的本地开发；
+- Remote API Adapter + Atlas API + D1 用于在线持久化体验；
+- Storage Version（存储版本）乐观并发控制，防止不同浏览器会话静默覆盖更新；
+- Domain behavior validation（领域行为验证）继续覆盖图不变量、布局语义、关系、Facet、Draft 同步与 Publish 生命周期，并增加 Online Experience 状态边界校验。
 
-当前 Local Storage Adapter 仍只用于尽快验证产品使用模型；它不是最终事实存储。后续会替换为 Atlas API + Cloudflare D1，同时保持 Domain 与交互语义不变。
+Online Experience V0.3 当前先使用经过 Domain 校验的 Workspace Experience Snapshot（工作区体验快照）建立在线闭环；它不是最终领域数据库结构。后续会按实际使用逐步拆分 Draft、Revision、Layout、State、Change Log 等存储和 API 边界，而不改变已经验证的产品语义。
 
 ## 仓库结构
 
@@ -70,6 +78,7 @@ docs/
   versioning-and-layout-v0.1.md
   mcp-tool-surface-v0.1.md
   architecture.md
+  online-experience-v0.3.md
   github-hardening.md
 ```
 
@@ -80,6 +89,7 @@ docs/
 - [版本与布局规则](docs/versioning-and-layout-v0.1.md)
 - [MCP / Tool 能力边界](docs/mcp-tool-surface-v0.1.md)
 - [系统架构边界](docs/architecture.md)
+- [Online Experience V0.3](docs/online-experience-v0.3.md)
 - [GitHub 公开仓库加固基线](docs/github-hardening.md)
 - [V0.1 Machine-readable Schema（机器可读模式）](schemas/v0.1/README.md)
 
@@ -95,6 +105,8 @@ Copyright (C) 2026 Shirui Huang.
 
 这是一个 Public Repository（公开仓库）。仓库只保存适合永久公开的源代码、公开文档和 Synthetic Data（合成数据）。不得提交真实用户数据、Secret / Credential（密钥 / 凭据）、生产日志、数据库导出、私有 Connector 输出或不应公开的线上基础设施信息。
 
+Online Experience V0.3 的真实 Cloudflare D1 `database_id`、Account / Resource ID、Token 与部署专用配置同样不得进入 Git 历史；仓库只跟踪安全的示例配置。
+
 敏感漏洞不要通过公开 Issue / PR 披露，详见 [`SECURITY.md`](SECURITY.md)。Human / AI Contributor（人类 / AI 贡献者）的完整安全规则见 [`AGENTS.md`](AGENTS.md)。
 
 ## 参与贡献（Contributing）
@@ -105,4 +117,4 @@ Copyright (C) 2026 Shirui Huang.
 
 ## 当前阶段
 
-当前正式进入 **Workbench V0.2（工作台 V0.2）**。Domain Schema V0.1（领域数据模式 V0.1）继续作为机器契约基线；Workbench 已开始验证完整的 Canvas / Layout / Relationship / Facet / Definition-Runtime-Work 交互，下一阶段再根据实际使用决定 API、D1、MCP 与自动 Adapter 的落地顺序。
+当前正式进入 **Online Experience V0.3（在线体验 V0.3）**。Domain Schema V0.1（领域数据模式 V0.1）继续作为机器契约基线，Workbench V0.2 的 Canvas / Layout / Relationship / Facet / Definition-Runtime-Work 交互语义保持稳定；V0.3 聚焦 Atlas API、D1 持久化、同源 Worker 部署与真实在线使用闭环。

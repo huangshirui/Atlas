@@ -48,6 +48,8 @@ Draft / Revision / Diff
 
 Atlas API / 后端控制面。负责持久化、领域操作、Revision、Layout、State 等服务入口。
 
+Online Experience V0.3（在线体验 V0.3）先在这里实现最小 Cloudflare Worker + D1 持久化边界。V0.3 可以暂时保存经过领域校验的 Workspace Experience Snapshot（工作区体验快照），但这只是在线闭环的存储形态，不得被误认为最终领域数据库已经定型。
+
 ### `packages/domain`
 
 最核心模块。负责：
@@ -58,7 +60,7 @@ Atlas API / 后端控制面。负责持久化、领域操作、Revision、Layout
 - Definition / Runtime / Work 三类数据边界；
 - Schema 校验。
 
-UI 和 MCP 都不应绕过 Domain Rule 直接改变模型语义。
+UI 和 MCP 都不应绕过 Domain Rule 直接改变模型语义。Online Experience V0.3 的 API 写入同样必须复用这里的校验，而不能仅依赖 Web 校验。
 
 ### `packages/mcp`
 
@@ -76,17 +78,38 @@ V0.1 只留边界，不要求自动接入完成。
 
 对外稳定的机器可读 Schema。Schema 版本与应用代码版本解耦管理。
 
-## 4. 初始部署方向
+## 4. Online Experience V0.3 部署方向
 
-当前预期：
+当前实现方向：
 
 - Web：React + React Flow；
 - API：Cloudflare Worker；
-- 持久化：Cloudflare D1（正式引入时再落表结构）；
+- 持久化：Cloudflare D1；
+- Static Assets（静态资源）：与 API 由同一个 Worker 部署；
 - 访问保护：优先 Cloudflare Access；
-- AI 接入：MCP / Tool。
+- AI 接入：MCP / Tool 在后续阶段正式落地。
 
-这些属于实现方向，不应反向污染领域模型。例如 Unit 不应包含 React Flow 的 Shape 配置。
+推荐拓扑：
+
+```text
+Browser
+  │
+  ▼
+Cloudflare Access
+  │
+  ▼
+Atlas Worker
+  ├── /api/*  ──> Worker code ──> D1
+  └── /*      ──> Static Assets
+```
+
+使用同一个 Worker 承载 API 与 Web 是 V0.3 的部署简化，不是领域耦合：Web 与 API 在代码结构上仍保持 `apps/web` / `apps/api` 分离。未来如果出现独立扩缩容、跨客户端 API 或其他部署需要，可以在不改变 Domain Model 的前提下重新拆分部署单元。
+
+Cloudflare Access 是部署入口的访问保护层，不属于 Canonical System Model 的用户 / 权限语义。V0.3 不复制 Access Policy、Session 或 Cloudflare 资源标识到领域模型。
+
+公开仓库不得保存真实 `database_id`、Account / Resource ID、Token、Access 配置或其他私有基础设施信息。仓库只保留安全的部署模板。
+
+这些实现选择不得反向污染领域模型。例如 Unit 不应包含 React Flow 的 Shape 配置，D1 的表结构也不应定义领域语义本身。
 
 ## 5. 事实所有权
 
