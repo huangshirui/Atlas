@@ -1,6 +1,7 @@
 import { createInitialExperienceState } from '@aisr-atlas/domain';
 
 const STORAGE_SLOT = 'aisr-atlas.experience.v0.3';
+const PREVIOUS_STORAGE_SLOT = 'aisr-atlas.experience.v0.2';
 const WORKSPACE_ID = 'atlas';
 const REMOTE_PERSISTENCE = import.meta.env.VITE_ATLAS_PERSISTENCE === 'remote';
 const API_BASE_URL = (import.meta.env.VITE_ATLAS_API_BASE_URL ?? '').replace(/\/$/, '');
@@ -17,7 +18,8 @@ function apiUrl(path) {
 
 function loadLocalState() {
   try {
-    const raw = window.localStorage.getItem(STORAGE_SLOT);
+    const raw = window.localStorage.getItem(STORAGE_SLOT)
+      ?? window.localStorage.getItem(PREVIOUS_STORAGE_SLOT);
     if (!raw) return createInitialExperienceState();
     const parsed = JSON.parse(raw);
     if (!parsed?.published?.model || !parsed?.draft?.model || !parsed?.runtimeStates || !parsed?.workStates) {
@@ -119,6 +121,7 @@ export function saveExperienceState(state) {
 export function resetExperienceState() {
   if (!REMOTE_PERSISTENCE) {
     window.localStorage.removeItem(STORAGE_SLOT);
+    window.localStorage.removeItem(PREVIOUS_STORAGE_SLOT);
     return createInitialExperienceState();
   }
 
