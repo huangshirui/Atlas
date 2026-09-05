@@ -29,6 +29,7 @@ jobs:
             docs/versioning-and-layout-v0.1.md
             docs/mcp-tool-surface-v0.1.md
             docs/architecture.md
+            docs/online-experience-v0.3.md
           )
 
           for file in "${required_files[@]}"; do
@@ -58,10 +59,13 @@ jobs:
       - name: Validate Domain behavior
         run: npm run test:domain
 
+      - name: Validate Online Experience V0.3
+        run: npm run test:online
+
       - name: Install web dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
-      - name: Build Workbench V0.2
+      - name: Build Online Experience V0.3
         run: npm run build
 
   secret-scan:
