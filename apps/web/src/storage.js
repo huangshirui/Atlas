@@ -1,4 +1,4 @@
-import { createInitialExperienceState } from '@aisr-atlas/domain';
+import { createAisrWorkspaceExperienceState } from '../../../packages/domain/src/aisr-workspace-experience.js';
 
 const STORAGE_SLOT = 'aisr-atlas.experience.v0.3';
 const PREVIOUS_STORAGE_SLOT = 'aisr-atlas.experience.v0.2';
@@ -16,18 +16,28 @@ function apiUrl(path) {
   return `${API_BASE_URL}${path}`;
 }
 
+function createDefaultState() {
+  return createAisrWorkspaceExperienceState();
+}
+
+function isLegacySelfDemo(state) {
+  return state?.published?.model?.root_unit_id === 'atlas'
+    && state?.workspace?.name === 'Atlas';
+}
+
 function loadLocalState() {
   try {
     const raw = window.localStorage.getItem(STORAGE_SLOT)
       ?? window.localStorage.getItem(PREVIOUS_STORAGE_SLOT);
-    if (!raw) return createInitialExperienceState();
+    if (!raw) return createDefaultState();
     const parsed = JSON.parse(raw);
     if (!parsed?.published?.model || !parsed?.draft?.model || !parsed?.runtimeStates || !parsed?.workStates) {
       throw new Error('Invalid stored state');
     }
+    if (isLegacySelfDemo(parsed)) return createDefaultState();
     return parsed;
   } catch {
-    return createInitialExperienceState();
+    return createDefaultState();
   }
 }
 
@@ -122,10 +132,10 @@ export function resetExperienceState() {
   if (!REMOTE_PERSISTENCE) {
     window.localStorage.removeItem(STORAGE_SLOT);
     window.localStorage.removeItem(PREVIOUS_STORAGE_SLOT);
-    return createInitialExperienceState();
+    return createDefaultState();
   }
 
-  const seed = createInitialExperienceState();
+  const seed = createDefaultState();
   lastQueuedJson = JSON.stringify(seed);
   remoteState = seed;
 
