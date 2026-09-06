@@ -1,18 +1,22 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
+import AisrEcosystemExperiment from './AisrEcosystemExperiment.jsx';
 import { initializePersistence } from './storage.js';
 import './styles.css';
 import './persistence.css';
 
 const root = createRoot(document.getElementById('root'));
+const experiment = new URLSearchParams(window.location.search).get('experiment');
 
 async function bootstrap() {
   try {
-    await initializePersistence();
+    if (experiment !== 'aisr-ecosystem') {
+      await initializePersistence();
+    }
     root.render(
       <StrictMode>
-        <App />
+        {experiment === 'aisr-ecosystem' ? <AisrEcosystemExperiment /> : <App />}
       </StrictMode>,
     );
   } catch (cause) {
