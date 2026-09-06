@@ -9,6 +9,10 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { createAisrEcosystemSeed } from '../../../packages/domain/src/aisr-ecosystem-seed.js';
+import {
+  AISR_ECOSYSTEM_IN_PROGRESS_STATUSES,
+  createLifeSpaceGranularWorkStates,
+} from '../../../packages/domain/src/aisr-ecosystem-work-focus.js';
 import { UnitNode } from './UnitNode.jsx';
 
 const nodeTypes = { unit: UnitNode };
@@ -31,6 +35,18 @@ function hasCollapsedAncestor(unit, model, collapsed) {
   while (parentId) {
     if (collapsed.has(parentId)) return true;
     parentId = model.units.find((candidate) => candidate.id === parentId)?.parent_id ?? null;
+  }
+  return false;
+}
+
+function isDescendantOf(unitId, ancestorId, model) {
+  let current = model.units.find((candidate) => candidate.id === unitId);
+  const visited = new Set();
+  while (current?.parent_id) {
+    if (visited.has(current.id)) return false;
+    visited.add(current.id);
+    if (current.parent_id === ancestorId) return true;
+    current = model.units.find((candidate) => candidate.id === current.parent_id);
   }
   return false;
 }
@@ -58,8 +74,13 @@ function DataRows({ data }) {
 
 function ExperimentWorkbench() {
   const seed = useMemo(() => createAisrEcosystemSeed(), []);
+  const lifeSpaceGranularWorkStates = useMemo(() => createLifeSpaceGranularWorkStates(), []);
   const { model, layout, runtimeStates, workStates } = seed;
-  const [selectedUnitId, setSelectedUnitId] = useState('aisr.ecosystem');
+  const effectiveWorkStates = useMemo(() => [
+    ...workStates.filter((current) => current.unit_id !== 'lifespace'),
+    ...lifeSpaceGranularWorkStates,
+  ], [lifeSpaceGranularWorkStates, workStates]);
+  const [selectedUnitId, setSelectedUnitId] = useState('lifespace');
   const [selectedRelationshipId, setSelectedRelationshipId] = useState(null);
   const [collapsed, setCollapsed] = useState(new Set());
 
@@ -67,6 +88,31 @@ function ExperimentWorkbench() {
     () => new Map(layout.nodes.map((entry) => [entry.unit_id, entry])),
     [layout.nodes],
   );
+
+  const workByUnit = useMemo(
+    () => new Map(effectiveWorkStates.map((current) => [current.unit_id, current])),
+    [effectiveWorkStates],
+  );
+
+  const inProgressWorkStates = useMemo(
+    () => effectiveWorkStates.filter((current) => AISR_ECOSYSTEM_IN_PROGRESS_STATUSES.has(current.status)),
+    [effectiveWorkStates],
+  );
+
+  const activeDescendantCounts = useMemo(() => {
+    const counts = new Map();
+    for (const currentWork of inProgressWorkStates) {
+      let currentUnit = model.units.find((candidate) => candidate.id === currentWork.unit_id);
+      const visited = new Set();
+      while (currentUnit?.parent_id) {
+        if (visited.has(currentUnit.id)) break;
+        visited.add(currentUnit.id);
+        counts.set(currentUnit.parent_id, (counts.get(currentUnit.parent_id) ?? 0) + 1);
+        currentUnit = model.units.find((candidate) => candidate.id === currentUnit.parent_id);
+      }
+    }
+    return counts;
+  }, [inProgressWorkStates, model.units]);
 
   const childCounts = useMemo(() => {
     const counts = new Map();
@@ -83,6 +129,7 @@ function ExperimentWorkbench() {
       const entry = layoutByUnit.get(current.id) ?? { x: 40, y: 80, width: 220, height: 104 };
       const isRoot = current.parent_id === null;
       const isCollapsed = collapsed.has(current.id);
+      const directWork = workByUnit.get(current.id) ?? null;
       return {
         id: current.id,
         type: 'unit',
@@ -100,6 +147,8 @@ function ExperimentWorkbench() {
           collapsed: isCollapsed,
           minWidth: 160,
           minHeight: 72,
+          workStatus: directWork?.status ?? null,
+          activeDescendantCount: activeDescendantCounts.get(current.id) ?? 0,
           onResizeEnd: () => {},
           onToggleCollapsed: (unitId) => setCollapsed((currentSet) => {
             const next = new Set(currentSet);
@@ -114,7 +163,7 @@ function ExperimentWorkbench() {
           zIndex: isRoot ? -10 : depthFor(current, model),
         },
       };
-    }), [childCounts, collapsed, layoutByUnit, model]);
+    }), [activeDescendantCounts, childCounts, collapsed, layoutByUnit, model, workByUnit]);
 
   const visibleNodeIds = useMemo(() => new Set(nodes.map((node) => node.id)), [nodes]);
   const edges = useMemo(() => model.relationships
@@ -139,9 +188,11 @@ function ExperimentWorkbench() {
   const selectedRuntime = selectedUnit
     ? runtimeStates.find((current) => current.unit_id === selectedUnit.id)
     : null;
-  const selectedWork = selectedUnit
-    ? workStates.find((current) => current.unit_id === selectedUnit.id)
-    : null;
+  const selectedWork = selectedUnit ? workByUnit.get(selectedUnit.id) ?? null : null;
+  const selectedDescendantWork = selectedUnit
+    ? inProgressWorkStates.filter((current) => isDescendantOf(current.unit_id, selectedUnit.id, model))
+    : [];
+  const lifeSpaceInProgress = inProgressWorkStates.filter((current) => current.unit_id.startsWith('lifespace.'));
 
   return (
     <div className="app-shell">
@@ -166,13 +217,13 @@ function ExperimentWorkbench() {
         <section className="canvas-panel">
           <div className="canvas-toolbar">
             <div>
-              <span className="eyebrow">Real architecture stress-test</span>
+              <span className="eyebrow">Granular current-work stress-test</span>
               <strong>LifeSpace · n8n Nodes · Adapters · ALOHA · HomeMew</strong>
             </div>
             <div className="canvas-toolbar__meta">
               <span>{model.units.length} Units</span>
-              <span>{model.relationships.length} Relationships</span>
-              <span>{model.custom_types.relationships.length} custom relationship types</span>
+              <span>{lifeSpaceInProgress.length} LifeSpace Units in progress</span>
+              <span>solid = direct work · dashed = active below</span>
             </div>
           </div>
 
@@ -236,8 +287,22 @@ function ExperimentWorkbench() {
                   {selectedRuntime ? <DataRows data={{ status: selectedRuntime.status, deployment: selectedRuntime.deployment }} /> : <p className="state-empty">No runtime state projected.</p>}
                 </div>
                 <div className="inspector-section">
-                  <div className="section-heading"><strong>Work State</strong></div>
-                  {selectedWork ? <DataRows data={{ status: selectedWork.status, summary: selectedWork.summary }} /> : <p className="state-empty">No work state projected.</p>}
+                  <div className="section-heading"><strong>Direct Work State</strong></div>
+                  {selectedWork
+                    ? <DataRows data={{ status: selectedWork.status, summary: selectedWork.summary }} />
+                    : <p className="state-empty">This Unit has no direct current work.</p>}
+                </div>
+                <div className="inspector-section">
+                  <div className="section-heading"><strong>Work in descendants</strong><span>{selectedDescendantWork.length}</span></div>
+                  {selectedDescendantWork.length > 0
+                    ? <DataRows data={{
+                      units: selectedDescendantWork.map((current) => ({
+                        unit_id: current.unit_id,
+                        status: current.status,
+                        summary: current.summary,
+                      })),
+                    }} />
+                    : <p className="state-empty">No descendant Unit has work in progress.</p>}
                 </div>
               </>
             )}
