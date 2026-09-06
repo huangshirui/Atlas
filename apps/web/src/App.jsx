@@ -36,7 +36,8 @@ import { UnitNode } from './UnitNode.jsx';
 import { loadExperienceState, resetExperienceState, saveExperienceState } from './storage.js';
 
 const nodeTypes = { unit: UnitNode };
-const WORKSPACE_OPTIONS = [{ id: 'atlas', name: 'Atlas' }];
+const WORKSPACE_OPTIONS = [{ id: 'atlas', name: 'AISR Ecosystem' }];
+const IN_PROGRESS_WORK_STATUSES = new Set(['active', 'reviewing', 'blocked']);
 
 function depthFor(unit, model) {
   let depth = 0;
@@ -77,10 +78,27 @@ function minimumSize(unitId, model, layout) {
   return { minWidth, minHeight };
 }
 
-function toFlowNodes(model, layout, semanticReadOnly, changedTargets, highlightDraftChanges, handlers) {
+function toFlowNodes(model, layout, semanticReadOnly, changedTargets, highlightDraftChanges, workStates, handlers) {
   const childCounts = new Map();
   for (const current of model.units) {
     if (current.parent_id) childCounts.set(current.parent_id, (childCounts.get(current.parent_id) ?? 0) + 1);
+  }
+
+  const workByUnit = new Map((workStates ?? []).map((current) => [current.unit_id, current]));
+  const activeDescendantCounts = new Map();
+  for (const currentWork of workStates ?? []) {
+    if (!IN_PROGRESS_WORK_STATUSES.has(currentWork.status)) continue;
+    let cursor = model.units.find((candidate) => candidate.id === currentWork.unit_id);
+    const visited = new Set();
+    while (cursor?.parent_id) {
+      if (visited.has(cursor.id)) break;
+      visited.add(cursor.id);
+      activeDescendantCounts.set(
+        cursor.parent_id,
+        (activeDescendantCounts.get(cursor.parent_id) ?? 0) + 1,
+      );
+      cursor = model.units.find((candidate) => candidate.id === cursor.parent_id);
+    }
   }
 
   return [...model.units]
@@ -91,6 +109,7 @@ function toFlowNodes(model, layout, semanticReadOnly, changedTargets, highlightD
       const isRoot = current.parent_id === null;
       const collapsed = Boolean(saved.collapsed);
       const mins = minimumSize(current.id, model, layout);
+      const directWork = workByUnit.get(current.id) ?? null;
       return {
         id: current.id,
         type: 'unit',
@@ -106,6 +125,8 @@ function toFlowNodes(model, layout, semanticReadOnly, changedTargets, highlightD
           hasChildren: (childCounts.get(current.id) ?? 0) > 0,
           childCount: childCounts.get(current.id) ?? 0,
           collapsed,
+          workStatus: directWork?.status ?? null,
+          activeDescendantCount: activeDescendantCounts.get(current.id) ?? 0,
           ...mins,
           onResizeEnd: handlers.onResizeEnd,
           onToggleCollapsed: handlers.onToggleCollapsed,
@@ -179,7 +200,7 @@ function UnitInspector({ unit, model, semanticReadOnly, runtimeState, workState,
   const [form, setForm] = useState(null);
   const [tab, setTab] = useState('definition');
   const [addOpen, setAddOpen] = useState(false);
-  const [newUnit, setNewUnit] = useState({ id: 'atlas.new-unit', name: 'New Unit', type: 'component', parent_id: model.root_unit_id });
+  const [newUnit, setNewUnit] = useState({ id: 'aisr.new-unit', name: 'New Unit', type: 'component', parent_id: model.root_unit_id });
 
   useEffect(() => {
     setForm(unit ? {
@@ -339,7 +360,7 @@ function AddUnitForm({ value, onChange, model, onCancel, onSubmit }) {
 }
 
 function AddUnitInspector({ model, onAdd, onClose }) {
-  const [value, setValue] = useState({ id: 'atlas.new-unit', name: 'New Unit', type: 'component', parent_id: model.root_unit_id });
+  const [value, setValue] = useState({ id: 'aisr.new-unit', name: 'New Unit', type: 'component', parent_id: model.root_unit_id });
   return (
     <aside className="inspector">
       <div className="drawer-heading">
@@ -478,10 +499,11 @@ function AtlasWorkbench() {
       semanticReadOnly,
       changedNodeTargets,
       highlightDraftChanges,
+      state.workStates ?? [],
       { onResizeEnd: handleResizeEnd, onToggleCollapsed: handleToggleCollapsed },
     );
     setNodes(nextNodes);
-  }, [active.model, active.layout, semanticReadOnly, changedNodeTargets, highlightDraftChanges, setNodes]);
+  }, [active.model, active.layout, semanticReadOnly, changedNodeTargets, highlightDraftChanges, state.workStates, setNodes]);
 
   const visibleNodeIds = useMemo(() => new Set(nodes.map((node) => node.id)), [nodes]);
   const edges = useMemo(
