@@ -1,9 +1,9 @@
 import {
   SCHEMA_VERSION,
-  createInitialExperienceState,
   validateModel,
   validateStateReferences,
 } from '../../../packages/domain/src/index.js';
+import { createAisrWorkspaceExperienceState } from '../../../packages/domain/src/aisr-workspace-experience.js';
 
 export const ONLINE_WORKSPACE_ID = 'atlas';
 
@@ -11,7 +11,7 @@ export function createOnlineSeedState(workspaceId) {
   if (workspaceId !== ONLINE_WORKSPACE_ID) {
     throw new Error(`Unsupported Workspace: ${workspaceId}`);
   }
-  return createInitialExperienceState();
+  return createAisrWorkspaceExperienceState();
 }
 
 export function validateExperienceState(state, workspaceId = ONLINE_WORKSPACE_ID) {
