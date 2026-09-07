@@ -585,11 +585,10 @@ function AtlasWorkbench() {
     if (!layoutUnlocked) return;
     if (layoutDirty && !window.confirm('Discard unsaved layout changes and lock the layout?')) return;
     if (layoutDirty && layoutBaseline) {
-      setState((current) => {
-        const next = replaceActiveLayout(current, mode, clone(layoutBaseline));
-        stateRef.current = next;
-        return next;
-      });
+      const restored = replaceActiveLayout(stateRef.current, mode, clone(layoutBaseline));
+      stateRef.current = restored;
+      setState(restored);
+      saveExperienceState(restored);
     }
     setLayoutUnlocked(false);
     setLayoutDirty(false);
