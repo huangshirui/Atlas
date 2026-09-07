@@ -35,6 +35,7 @@ export function UnitNode({ data, selected }) {
     unit,
     changed,
     semanticReadOnly,
+    layoutUnlocked = false,
     hasChildren,
     childCount,
     collapsed,
@@ -67,7 +68,7 @@ export function UnitNode({ data, selected }) {
       }}
     >
       <NodeResizer
-        isVisible={selected && !collapsed}
+        isVisible={layoutUnlocked && selected && !collapsed}
         minWidth={minWidth}
         minHeight={minHeight}
         lineClassName="unit-resizer-line"
@@ -145,7 +146,7 @@ export function UnitNode({ data, selected }) {
               ↳ {activeDescendantCount} active below
             </span>
           )}
-          {hasChildren && !isRoot && (
+          {hasChildren && !isRoot && layoutUnlocked && (
             <button
               className="unit-node__collapse nodrag nopan"
               onClick={(event) => {
