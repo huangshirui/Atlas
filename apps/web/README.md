@@ -11,7 +11,8 @@
 - Published Revision（已发布修订版本）作为默认查看态；
 - Layout（布局）默认锁定：锁定时 Unit 不可拖动 / Resize / Collapse，主按钮拖动用于平移 Canvas 查看不同区域；
 - 用户显式点击 `Unlock Layout` 后才进入 Layout 编辑态；Layout 编辑期间的拖动、Resize、Collapse / Expand 只修改当前内存中的 Personal Layout（个人布局）工作副本，不自动写入 Local Storage / Remote API；
-- Layout 编辑态提供 `Save Layout` 与 `Restore`：`Save Layout` 显式保存当前 Personal Layout，`Restore` 丢弃本次未保存变化并恢复到上次保存的 Personal Layout；
+- Layout 编辑态提供 `Save Layout` 与 `Restore`：`Save Layout` 显式保存当前 Personal Layout 并把它更新为后续编辑的恢复基线；`Restore` 丢弃本次尚未保存的变化并恢复到最近一次保存的 Personal Layout；
+- 如果带未保存 Layout 变化直接执行 `Lock`，需要明确确认是否丢弃；丢弃后恢复最近一次保存的 Personal Layout，再回到锁定浏览态；
 - V0.1 仍保留 Default Layout（默认布局）与 Personal Layout（个人布局）的领域区分；当前 Online Experience 的 `Restore` 不是“恢复 Default Layout”，Default Layout 的独立 UI 操作尚未在本阶段落地；
 - 多层 Containment（包含关系）与 Relationship（关系）连线；
 - Unit Inspector（单元检查器）按 Definition / Runtime / Work（三类状态）展示 Facet（侧面）；
