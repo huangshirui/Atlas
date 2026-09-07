@@ -9,7 +9,10 @@
 - Header（顶部栏）中的 Workspace（工作区）选择与 Published / Draft 状态；
 - Header 以下全部空间由 Canvas（画布）占用；
 - Published Revision（已发布修订版本）作为默认查看态；
-- Unit（单元）拖动、Resize（调整大小）、Collapse / Expand（折叠 / 展开）只修改 Personal Layout（个人布局）；
+- Layout（布局）默认锁定：锁定时 Unit 不可拖动 / Resize / Collapse，主按钮拖动用于平移 Canvas 查看不同区域；
+- 用户显式点击 `Unlock Layout` 后才进入 Layout 编辑态；Layout 编辑期间的拖动、Resize、Collapse / Expand 只修改当前内存中的 Personal Layout（个人布局）工作副本，不自动写入 Local Storage / Remote API；
+- Layout 编辑态提供 `Save Layout` 与 `Restore`：`Save Layout` 显式保存当前 Personal Layout，`Restore` 丢弃本次未保存变化并恢复到上次保存的 Personal Layout；
+- V0.1 仍保留 Default Layout（默认布局）与 Personal Layout（个人布局）的领域区分；当前 Online Experience 的 `Restore` 不是“恢复 Default Layout”，Default Layout 的独立 UI 操作尚未在本阶段落地；
 - 多层 Containment（包含关系）与 Relationship（关系）连线；
 - Unit Inspector（单元检查器）按 Definition / Runtime / Work（三类状态）展示 Facet（侧面）；
 - Draft 中新增 Unit，并通过拖线创建 Relationship；
@@ -19,7 +22,7 @@
 - Local Storage Adapter（本地存储适配器）用于普通本地开发；
 - Remote API Adapter（远程 API 适配器）用于在线部署；
 - 在线模式通过 API Storage Version（存储版本）避免不同浏览器会话静默覆盖新状态；
-- Reset（重置）恢复 Atlas 的多层 Synthetic Seed（合成种子）。
+- Reset（重置）恢复 AISR Ecosystem 的多层 Synthetic Seed（合成种子）。
 
 ## 本地运行
 
@@ -54,4 +57,4 @@ Remote 模式启动时必须先成功读取在线状态。API 不可用时页面
 
 Web 只负责呈现和交互，不拥有 Canonical Model（规范模型）的最终校验权。在线写入会再次经过 `apps/api`，并复用 `packages/domain` 的领域校验。
 
-Header 已预留 Workspace Selector（工作区选择器），但 V0.3 在线体验仍只提供 `Atlas` 一个 Workspace。Web 不得通过 XY 坐标、尺寸或折叠状态推导或隐式修改 Canonical Model。
+Header 已预留 Workspace Selector（工作区选择器），但 V0.3 在线体验仍只提供 `atlas` 一个持久化 Workspace ID；当前显示内容为 AISR Ecosystem。Web 不得通过 XY 坐标、尺寸或折叠状态推导或隐式修改 Canonical Model。
