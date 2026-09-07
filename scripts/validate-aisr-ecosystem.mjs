@@ -21,6 +21,10 @@ const errors = [
   ...validateStateReferences(model, runtimeStates, effectiveWorkStates),
 ];
 
+if ('kind' in layout || 'owner' in layout) {
+  errors.push('AISR ecosystem Layout must use the V0.1 single-layout shape without kind or owner.');
+}
+
 const unitIds = new Set(model.units.map((current) => current.id));
 const layoutIds = new Set(layout.nodes.map((current) => current.unit_id));
 for (const unitId of unitIds) {
@@ -60,5 +64,5 @@ if (errors.length) {
 }
 
 console.log(
-  `AISR ecosystem seed valid: ${model.units.length} Units, ${model.relationships.length} Relationships, ${lifeSpaceInProgress.length} LifeSpace Units in progress.`,
+  `AISR ecosystem seed valid: ${model.units.length} Units, ${model.relationships.length} Relationships, ${lifeSpaceInProgress.length} LifeSpace Units in progress, single Layout.`,
 );
