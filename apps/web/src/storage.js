@@ -1,4 +1,4 @@
-import { createInitialExperienceState } from '@aisr-atlas/domain';
+import { createAisrWorkspaceExperienceState } from '../../../packages/domain/src/aisr-workspace-experience.js';
 
 const STORAGE_SLOT = 'aisr-atlas.experience.v0.3';
 const PREVIOUS_STORAGE_SLOT = 'aisr-atlas.experience.v0.2';
@@ -16,18 +16,53 @@ function apiUrl(path) {
   return `${API_BASE_URL}${path}`;
 }
 
+function createDefaultState() {
+  return createAisrWorkspaceExperienceState();
+}
+
+function normalizeLayout(layout) {
+  if (!layout) return layout;
+  const {
+    kind: _legacyKind,
+    owner: _legacyOwner,
+    ...normalized
+  } = layout;
+  return normalized;
+}
+
+function normalizeExperienceState(state) {
+  if (!state?.published || !state?.draft) return state;
+  return {
+    ...state,
+    published: {
+      ...state.published,
+      layout: normalizeLayout(state.published.layout),
+    },
+    draft: {
+      ...state.draft,
+      layout: normalizeLayout(state.draft.layout),
+    },
+  };
+}
+
+function isLegacySelfDemo(state) {
+  return state?.published?.model?.root_unit_id === 'atlas'
+    && state?.workspace?.name === 'Atlas';
+}
+
 function loadLocalState() {
   try {
     const raw = window.localStorage.getItem(STORAGE_SLOT)
       ?? window.localStorage.getItem(PREVIOUS_STORAGE_SLOT);
-    if (!raw) return createInitialExperienceState();
+    if (!raw) return createDefaultState();
     const parsed = JSON.parse(raw);
     if (!parsed?.published?.model || !parsed?.draft?.model || !parsed?.runtimeStates || !parsed?.workStates) {
       throw new Error('Invalid stored state');
     }
-    return parsed;
+    if (isLegacySelfDemo(parsed)) return createDefaultState();
+    return normalizeExperienceState(parsed);
   } catch {
-    return createInitialExperienceState();
+    return createDefaultState();
   }
 }
 
@@ -69,7 +104,7 @@ export async function initializePersistence() {
     credentials: 'same-origin',
   });
   const payload = await responseJson(response);
-  remoteState = payload.state;
+  remoteState = normalizeExperienceState(payload.state);
   remoteVersion = payload.version;
   lastQueuedJson = JSON.stringify(payload.state);
 }
@@ -122,10 +157,10 @@ export function resetExperienceState() {
   if (!REMOTE_PERSISTENCE) {
     window.localStorage.removeItem(STORAGE_SLOT);
     window.localStorage.removeItem(PREVIOUS_STORAGE_SLOT);
-    return createInitialExperienceState();
+    return createDefaultState();
   }
 
-  const seed = createInitialExperienceState();
+  const seed = createDefaultState();
   lastQueuedJson = JSON.stringify(seed);
   remoteState = seed;
 
@@ -137,7 +172,7 @@ export function resetExperienceState() {
         credentials: 'same-origin',
       });
       const payload = await responseJson(response);
-      remoteState = payload.state;
+      remoteState = normalizeExperienceState(payload.state);
       remoteVersion = payload.version;
       lastQueuedJson = JSON.stringify(payload.state);
       persistenceFailureShown = false;

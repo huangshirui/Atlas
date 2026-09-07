@@ -32,13 +32,15 @@ V0.3 至少应完成：
 1. Atlas API 可以读取当前 Workspace 的在线体验状态；
 2. D1 在首次访问时可以安全初始化 Synthetic Seed（合成种子数据）；
 3. Web 可以从 API 加载 Published / Draft / Layout / Runtime State / Work State；
-4. Web 的现有编辑、布局和 Publish 行为可以持久化到 D1；
-5. 页面刷新、关闭浏览器后重新打开，状态仍然存在；
-6. API 在写入前复用 `packages/domain` 的领域校验，而不是信任 Web；
-7. 写入带 Optimistic Concurrency（乐观并发控制），避免不同标签页静默覆盖较新的在线状态；
-8. 本地开发仍可使用 Local Storage Adapter（本地存储适配器），在线部署显式切换为 Remote API Adapter（远程 API 适配器）；
-9. API 与 Web 保持同源部署能力，避免为 V0.3 引入额外 CORS 和独立前端托管复杂度；
-10. 所有公开仓库中的部署配置只包含安全占位符，不提交 Cloudflare Account / Resource ID、Token 或其他线上基础设施敏感信息。
+4. Web 的定义编辑和 Publish 行为可以持久化到 D1；Layout 默认锁定，只有显式解锁后才允许调整 Unit Layout，并且拖动 / Resize / Collapse 不自动持久化，必须通过明确的 `Save Layout` 操作保存；
+5. Layout 编辑态支持 `Restore`，用于丢弃自最近一次保存以来尚未保存的变化并恢复到最近一次保存的唯一 Layout；
+6. Zoom / Fit View / Lock-Unlock / Restore / Save Layout 统一放入 Canvas Controls，避免持续占用 Workspace Header；
+7. 页面刷新、关闭浏览器后重新打开，已显式保存的状态仍然存在；
+8. API 在写入前复用 `packages/domain` 的领域校验，而不是信任 Web；
+9. 写入带 Optimistic Concurrency（乐观并发控制），避免不同标签页静默覆盖较新的在线状态；
+10. 本地开发仍可使用 Local Storage Adapter（本地存储适配器），在线部署显式切换为 Remote API Adapter（远程 API 适配器）；
+11. API 与 Web 保持同源部署能力，避免为 V0.3 引入额外 CORS 和独立前端托管复杂度；
+12. 所有公开仓库中的部署配置只包含安全占位符，不提交 Cloudflare Account / Resource ID、Token 或其他线上基础设施敏感信息。
 
 ## 3. V0.3 明确不做
 
@@ -51,6 +53,7 @@ V0.3 至少应完成：
 - GitHub / Cloudflare / n8n 等 Adapter 自动同步；
 - Runtime / Work State 的自动采集；
 - 完整 Revision 历史浏览 UI；
+- Default / Personal 双 Layout 与多用户个人 Layout Override；
 - 把 D1 表结构一次性正规化为最终领域数据库。
 
 V0.3 先以受校验的 Workspace Experience Snapshot（工作区体验快照）建立在线持久化闭环。后续 API / MCP 能力扩展时，再按照 Domain Boundary（领域边界）逐步拆分为独立的 Draft、Revision、Layout、State、Change Log 存储模型，而不要求 Web 再次改变产品语义。
@@ -63,7 +66,10 @@ V0.3 先以受校验的 Workspace Experience Snapshot（工作区体验快照）
 
 - D1 中的 Atlas API 状态是当前在线体验的事实源；
 - Browser Local Storage 不作为在线状态的第二事实源；
-- API 不可用时，Web 应明确显示失败，而不是静默切回本地并形成分叉状态。
+- API 不可用时，Web 应明确显示失败，而不是静默切回本地并形成分叉状态；
+- 每个 Model Target 只维护一份持久化 Layout；
+- Layout 解锁后的未保存 Working Copy 只存在于当前 Web 会话内，不属于持久化事实；只有显式 `Save Layout` 后才覆盖当前目标已保存的 Layout；
+- 每次 `Save Layout` 后，已保存 Layout 立即成为当前编辑会话新的 Restore Baseline（恢复基线）。
 
 ### 4.2 Local development（本地开发）
 
@@ -131,4 +137,5 @@ Online Experience V0.3 完成并实际使用后，再根据使用体验决定下
 - Revision / Change Log 历史查询；
 - GitHub / Cloudflare 等 Adapter；
 - Runtime / Work State 自动投影；
-- 多用户 / Workspace 授权。
+- 多用户 / Workspace 授权；
+- 如果真实协作需求出现，再评估可选 Personal Layout Override，而不是预设 Default / Personal 双 Layout。

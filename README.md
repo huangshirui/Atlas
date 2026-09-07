@@ -47,8 +47,11 @@ VITE_ATLAS_PERSISTENCE=remote npm run build
 当前体验包含：
 
 - Header（顶部栏）中的 Workspace（工作区）选择与 Published / Draft 状态；
-- 全宽 Canvas（画布）与真实多层 Atlas 自描述结构；
-- Unit（单元）拖动、Resize（调整大小）、Collapse / Expand（折叠 / 展开），均只修改 Personal Layout（个人布局）；
+- 全宽 Canvas（画布）与真实 AISR Ecosystem 多层结构；
+- Layout 默认锁定：锁定时拖动用于平移 Canvas；显式解锁后才允许 Unit 拖动、Resize、Collapse / Expand；
+- Zoom / Fit View / Lock-Unlock / Restore / Save Layout 统一位于 Canvas Controls，避免持续占用 Header；
+- 解锁后的 Layout 变化先作为当前会话的未保存 Working Copy 存在，不自动持久化；通过 `Save Layout` 显式保存，通过 `Restore` 丢弃自最近一次保存以来的变化；
+- V0.1 每个 Model Target 只维护一份持久化 Layout，不区分 Default / Personal Layout；
 - Unit Inspector（单元检查器）中的 Definition / Runtime / Work（三类状态）与 Facet（侧面）展示；
 - Draft 中新增 Unit，并通过拖线创建 Relationship（关系）；
 - Relationship Inspector（关系检查器）查看、编辑与删除关系；

@@ -183,7 +183,9 @@ collapsed: false
 
 子 Unit 坐标优先采用相对 Parent 的坐标。
 
-Layout 必须显式绑定一个 Model Target（模型目标）：当前 Active Draft（活动草稿）或某个 Published Revision（已发布修订版本）。Active Draft 使用 Working Layout（工作布局）支持新增 Unit、拖动和发布前 Review（评审）；Published Revision 使用正式 Layout。Layout Target 不改变 Parent、Type、Containment 或 Relationship 等语义。
+Layout 必须显式绑定一个 Model Target（模型目标）：当前 Active Draft（活动草稿）或某个 Published Revision（已发布修订版本）。V0.1 每个 Model Target 只维护一份持久化 Layout，不区分 Default / Personal，也不保存 Layout Owner。Active Draft 使用 Working Layout（工作布局）支持新增 Unit、拖动和发布前 Review（评审）；Published Revision 使用正式 Layout。Layout Target 不改变 Parent、Type、Containment 或 Relationship 等语义。
+
+Web 在 Layout 解锁期间可以维护一个未保存的交互 Working Copy，但它不是第二份领域 Layout；只有显式 Save 后才覆盖当前 Model Target 已保存的 Layout。
 
 ## 10. 草稿（Draft）与修订版本（Revision）
 
@@ -196,7 +198,7 @@ Draft 是可持续修改的工作副本。修改不会每次立即产生新的 P
 
 用户明确 Publish 后，Draft 一次性形成新的 Published Revision。
 
-Active Draft 同时可以拥有 Default / Personal Working Layout（默认 / 个人工作布局）。Publish 时，当前 Draft 的工作布局与语义模型一起固化为新 Revision 的布局起点；这属于同一次 Publish 生命周期，不等同于在两个已发布 Revision 之间执行自动 Layout Migration（布局迁移）。
+Active Draft 拥有一份 Working Layout。Publish 时，当前 Draft 已保存的工作布局与语义模型一起固化为新 Revision 的布局起点；这属于同一次 Publish 生命周期，不等同于在两个已发布 Revision 之间执行自动 Layout Migration（布局迁移）。
 
 ## 11. 三类状态数据
 
@@ -227,4 +229,5 @@ Active Draft 同时可以拥有 Default / Personal Working Layout（默认 / 个
 9. Publish 必须显式发生；
 10. Runtime State / Work State 变化不得制造 Definition Revision；
 11. Layout 必须显式绑定 Active Draft 或 Published Revision；Draft Working Layout 只能绑定当前 Draft，Published Layout 必须绑定具体 Revision；
-12. V0.1 不在两个 Published Revision 之间自动迁移 Layout。
+12. 每个 Model Target 在 V0.1 只维护一份持久化 Layout；
+13. V0.1 不在两个 Published Revision 之间自动迁移 Layout。

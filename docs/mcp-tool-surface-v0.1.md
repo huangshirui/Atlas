@@ -30,14 +30,15 @@ get_unit
 list_children
 list_relationships
 get_unit_facets
-get_default_layout
-get_personal_layout
+get_layout
 get_runtime_state
 get_work_state
 get_draft_diff
 get_change_log
 compare_revisions
 ```
+
+`get_layout` 必须显式指定 Model Target（Active Draft 或某个 Published Revision）。V0.1 不区分 Default / Personal Layout。
 
 查询应支持按稳定 Unit ID 定位，例如：
 
@@ -64,10 +65,10 @@ update_declared_facet
 ### Layout 修改
 
 ```text
-update_default_layout
-update_personal_layout
-reset_personal_layout_to_default
+update_layout
 ```
+
+`update_layout` 更新指定 Model Target 当前唯一的持久化 Layout。Web 中 Unlock 后的未保存 Working Copy 属于客户端交互状态，不需要成为第二个 MCP 领域对象；Tool 调用本身是明确写操作，不模拟拖动过程。
 
 ### Runtime / Work State 修改
 
@@ -109,6 +110,8 @@ publish_draft
 
 AI 不应依赖重新解析整张画布来确认变更结果。
 
+Layout Mutation 至少应返回目标 Draft / Revision 与更新后的 Layout 标识 / 时间戳，避免调用方依赖视觉状态确认写入结果。
+
 ## 7. Change Log
 
 Draft 的每次定义性修改应形成 Change Log 条目，但 Tool 不需要在普通 `get_current_draft` 中默认携带全部日志。
@@ -125,6 +128,8 @@ before
 after
 ```
 
+Layout 修改不应被伪装成 Definition Change；需要审计时可单独记录 Layout 操作历史，但不因此制造 Definition Revision。
+
 ## 8. Actor 与 Source
 
 MCP / Tool 写入时需要保留可归因信息（Attribution）：
@@ -140,6 +145,7 @@ V0.1 MCP / Tool 不承担：
 
 - 跨 Workspace 操作关系；
 - 多 Draft 分支合并；
+- Default / Personal 双 Layout；
 - 自动审批；
 - AI 自主发布；
 - GitHub / Cloudflare 等 Adapter 的全部自动化能力。
