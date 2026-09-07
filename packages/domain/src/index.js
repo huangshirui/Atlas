@@ -126,7 +126,7 @@ export function createSeedModel() {
       unit('atlas.web.inspector', 'Inspector', 'component', 'atlas.web', 'Contextual unit, relationship and facet inspector.'),
       unit('atlas.api', 'Atlas API', 'service', 'atlas', 'Control-plane API boundary.'),
       unit('atlas.api.revision', 'Revision Service', 'component', 'atlas.api', 'Draft, diff and publish lifecycle boundary.'),
-      unit('atlas.api.layout', 'Layout Service', 'component', 'atlas.api', 'Default and personal layout boundary.'),
+      unit('atlas.api.layout', 'Layout Service', 'component', 'atlas.api', 'Single target-bound layout boundary.'),
       unit('atlas.api.state', 'State Service', 'component', 'atlas.api', 'Runtime and work state boundary.'),
       unit('atlas.domain', 'Atlas Domain', 'component', 'atlas', 'Shared domain rules and validation.'),
       unit('atlas.domain.graph', 'Workspace / Unit Graph', 'component', 'atlas.domain', 'Workspace, Unit, containment and Relationship invariants.'),
@@ -182,8 +182,6 @@ export function createSeedLayout({ targetKind = 'revision', targetId = 'revision
     id: `layout.atlas.${targetKind}.${targetId.replaceAll('.', '_')}`,
     workspace_id: 'atlas',
     target: { kind: targetKind, id: targetId },
-    kind: 'personal',
-    owner: { kind: 'human', id: 'local-user' },
     nodes: [
       layoutNode('atlas', 40, 30, 1540, 980),
       layoutNode('atlas.web', 40, 90, 440, 310),
