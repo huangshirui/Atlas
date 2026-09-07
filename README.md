@@ -47,8 +47,9 @@ VITE_ATLAS_PERSISTENCE=remote npm run build
 当前体验包含：
 
 - Header（顶部栏）中的 Workspace（工作区）选择与 Published / Draft 状态；
-- 全宽 Canvas（画布）与真实多层 Atlas 自描述结构；
-- Unit（单元）拖动、Resize（调整大小）、Collapse / Expand（折叠 / 展开），均只修改 Personal Layout（个人布局）；
+- 全宽 Canvas（画布）与真实 AISR Ecosystem 多层结构；
+- Layout 默认锁定：锁定时拖动用于平移 Canvas；显式 `Unlock Layout` 后才允许 Unit 拖动、Resize、Collapse / Expand；
+- 解锁后的 Layout 变化先作为未保存 Personal Layout 工作副本存在，不自动持久化；通过 `Save Layout` 显式保存，通过 `Restore` 丢弃本次未保存变化并回到上次保存的 Personal Layout；
 - Unit Inspector（单元检查器）中的 Definition / Runtime / Work（三类状态）与 Facet（侧面）展示；
 - Draft 中新增 Unit，并通过拖线创建 Relationship（关系）；
 - Relationship Inspector（关系检查器）查看、编辑与删除关系；
@@ -57,6 +58,8 @@ VITE_ATLAS_PERSISTENCE=remote npm run build
 - Remote API Adapter + Atlas API + D1 用于在线持久化体验；
 - Storage Version（存储版本）乐观并发控制，防止不同浏览器会话静默覆盖更新；
 - Domain behavior validation（领域行为验证）继续覆盖图不变量、布局语义、关系、Facet、Draft 同步与 Publish 生命周期，并增加 Online Experience 状态边界校验。
+
+V0.1 领域基线仍然区分 Default Layout（默认布局）与 Personal Layout（个人布局）。当前 Online Experience 的 `Restore` 只表示恢复到“上次保存的 Personal Layout”；“恢复 Personal Layout 到 Default Layout”仍是独立语义，当前 Web 体验尚未单独提供该操作。
 
 Online Experience V0.3 当前先使用经过 Domain 校验的 Workspace Experience Snapshot（工作区体验快照）建立在线闭环；它不是最终领域数据库结构。后续会按实际使用逐步拆分 Draft、Revision、Layout、State、Change Log 等存储和 API 边界，而不改变已经验证的产品语义。
 
