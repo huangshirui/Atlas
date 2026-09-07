@@ -62,6 +62,7 @@ assert.match(appSource, /nodesDraggable=\{layoutUnlocked\}/, 'Unit dragging must
 assert.match(appSource, /panOnDrag=\{!layoutUnlocked\}/, 'Locked pointer dragging must pan the canvas');
 assert.match(appSource, /if \(!layoutUnlocked\) saveExperienceState\(state\)/, 'Unsaved layout editing must bypass automatic persistence');
 assert.match(appSource, /const currentState = stateRef\.current/, 'Explicit Save Layout must read the latest working-copy state');
+assert.match(appSource, /saveExperienceState\(restored\)/, 'Discarding dirty layout changes while locking must persist the restored saved baseline, not the dirty working copy');
 assert.match(appSource, />Save Layout<\//, 'Unlocked layout editing must expose an explicit Save Layout action');
 assert.match(appSource, />Restore<\//, 'Unlocked layout editing must expose an explicit Restore action');
 assert.match(unitNodeSource, /isVisible=\{layoutUnlocked && selected && !collapsed\}/, 'Resize handles must stay hidden while layout is locked');
