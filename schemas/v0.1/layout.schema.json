@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AISR Atlas V0.1 Layout",
-  "description": "Model-target-bound visual state. It never changes semantic Parent, Type, Containment, or Relationship.",
+  "description": "The single persisted visual layout for a model target. It never changes semantic Parent, Type, Containment, or Relationship.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -9,8 +9,6 @@
     "id",
     "workspace_id",
     "target",
-    "kind",
-    "owner",
     "nodes",
     "viewport",
     "updated_at"
@@ -24,23 +22,6 @@
     },
     "workspace_id": {
       "$ref": "common.schema.json#/$defs/stableId"
-    },
-    "kind": {
-      "type": "string",
-      "enum": [
-        "default",
-        "personal"
-      ]
-    },
-    "owner": {
-      "anyOf": [
-        {
-          "$ref": "common.schema.json#/$defs/actor"
-        },
-        {
-          "type": "null"
-        }
-      ]
     },
     "nodes": {
       "type": "array",
@@ -123,39 +104,5 @@
         }
       }
     }
-  },
-  "allOf": [
-    {
-      "if": {
-        "properties": {
-          "kind": {
-            "const": "default"
-          }
-        }
-      },
-      "then": {
-        "properties": {
-          "owner": {
-            "type": "null"
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "kind": {
-            "const": "personal"
-          }
-        }
-      },
-      "then": {
-        "properties": {
-          "owner": {
-            "$ref": "common.schema.json#/$defs/actor"
-          }
-        }
-      }
-    }
-  ]
+  }
 }
