@@ -440,6 +440,7 @@ function AtlasWorkbench() {
   const [state, setState] = useState(loadExperienceState);
   const stateRef = useRef(state);
   stateRef.current = state;
+  const skipNextLockedPersistenceRef = useRef(false);
   const [mode, setMode] = useState('published');
   const [selectedUnitId, setSelectedUnitId] = useState(null);
   const [selectedRelationshipId, setSelectedRelationshipId] = useState(null);
@@ -510,7 +511,12 @@ function AtlasWorkbench() {
   };
 
   useEffect(() => {
-    if (!layoutUnlocked) saveExperienceState(state);
+    if (layoutUnlocked) return;
+    if (skipNextLockedPersistenceRef.current) {
+      skipNextLockedPersistenceRef.current = false;
+      return;
+    }
+    saveExperienceState(state);
   }, [state, layoutUnlocked]);
 
   useEffect(() => {
@@ -587,6 +593,7 @@ function AtlasWorkbench() {
     if (layoutDirty && layoutBaseline) {
       const restored = replaceActiveLayout(stateRef.current, mode, clone(layoutBaseline));
       stateRef.current = restored;
+      skipNextLockedPersistenceRef.current = true;
       setState(restored);
       saveExperienceState(restored);
     }
