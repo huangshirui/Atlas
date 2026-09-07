@@ -59,8 +59,8 @@ Canvas 的浏览状态与 Layout 编辑必须显式区分。
 - 拖动 Unit、调整尺寸、展开 / 折叠只修改 Layout；
 - 这些操作不得改变 Parent、Type、Containment、Relationship 或其他 Canonical Model 数据；
 - Layout 编辑态中的变化先进入未保存 Working Copy（工作副本），不得因为拖动完成就自动持久化；
-- 用户显式执行 `Save Layout` 后，才保存当前 Personal Layout；
-- 用户执行 `Restore` 时，丢弃本次尚未保存的 Layout 变化，恢复到上次保存的 Personal Layout；
+- 用户显式执行 `Save Layout` 后，才保存当前 Personal Layout，并将其作为本次继续编辑时新的恢复基线；
+- 用户执行 `Restore` 时，丢弃自最近一次 `Save Layout` 以来尚未保存的 Layout 变化，恢复到最近一次保存的 Personal Layout；
 - 如果用户在存在未保存 Layout 变化时重新锁定，应显式确认是否丢弃，而不是静默保存。
 
 不得因为以下行为隐式改变 Canonical Model：
@@ -200,7 +200,7 @@ Model Target
 
 V0.1 区分两种恢复语义：
 
-1. **Restore current edit session**：丢弃本次尚未保存的 Layout 改动，回到上次保存的 Personal Layout；
+1. **Restore current edit session**：丢弃自最近一次保存以来尚未保存的 Layout 改动，回到最近一次保存的 Personal Layout；
 2. **Reset Personal Layout to Default**：将 Personal Layout 恢复为同一 Model Target 的 Default Layout。
 
 二者不得在 UI / Tool 语义上混为一个动作。
