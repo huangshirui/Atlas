@@ -20,6 +20,31 @@ function createDefaultState() {
   return createAisrWorkspaceExperienceState();
 }
 
+function normalizeLayout(layout) {
+  if (!layout) return layout;
+  const {
+    kind: _legacyKind,
+    owner: _legacyOwner,
+    ...normalized
+  } = layout;
+  return normalized;
+}
+
+function normalizeExperienceState(state) {
+  if (!state?.published || !state?.draft) return state;
+  return {
+    ...state,
+    published: {
+      ...state.published,
+      layout: normalizeLayout(state.published.layout),
+    },
+    draft: {
+      ...state.draft,
+      layout: normalizeLayout(state.draft.layout),
+    },
+  };
+}
+
 function isLegacySelfDemo(state) {
   return state?.published?.model?.root_unit_id === 'atlas'
     && state?.workspace?.name === 'Atlas';
@@ -35,7 +60,7 @@ function loadLocalState() {
       throw new Error('Invalid stored state');
     }
     if (isLegacySelfDemo(parsed)) return createDefaultState();
-    return parsed;
+    return normalizeExperienceState(parsed);
   } catch {
     return createDefaultState();
   }
@@ -79,7 +104,7 @@ export async function initializePersistence() {
     credentials: 'same-origin',
   });
   const payload = await responseJson(response);
-  remoteState = payload.state;
+  remoteState = normalizeExperienceState(payload.state);
   remoteVersion = payload.version;
   lastQueuedJson = JSON.stringify(payload.state);
 }
@@ -147,7 +172,7 @@ export function resetExperienceState() {
         credentials: 'same-origin',
       });
       const payload = await responseJson(response);
-      remoteState = payload.state;
+      remoteState = normalizeExperienceState(payload.state);
       remoteVersion = payload.version;
       lastQueuedJson = JSON.stringify(payload.state);
       persistenceFailureShown = false;
