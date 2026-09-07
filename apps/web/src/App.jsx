@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   Controls,
@@ -438,6 +438,8 @@ function DiffPanel({ changes, onClose }) {
 
 function AtlasWorkbench() {
   const [state, setState] = useState(loadExperienceState);
+  const stateRef = useRef(state);
+  stateRef.current = state;
   const [mode, setMode] = useState('published');
   const [selectedUnitId, setSelectedUnitId] = useState(null);
   const [selectedRelationshipId, setSelectedRelationshipId] = useState(null);
@@ -477,7 +479,9 @@ function AtlasWorkbench() {
       const model = mode === 'draft' ? current.draft.model : current.published.model;
       let layout = updateLayoutNode(target.layout, unitId, patch);
       layout = fitAncestorsToLayout(layout, model, unitId);
-      return replaceActiveLayout(current, mode, layout);
+      const next = replaceActiveLayout(current, mode, layout);
+      stateRef.current = next;
+      return next;
     });
     setLayoutDirty(true);
     setNotice(message);
@@ -497,7 +501,9 @@ function AtlasWorkbench() {
     setState((current) => {
       const target = mode === 'draft' ? current.draft : current.published;
       const layout = toggleLayoutCollapsed(target.layout, unitId);
-      return replaceActiveLayout(current, mode, layout);
+      const next = replaceActiveLayout(current, mode, layout);
+      stateRef.current = next;
+      return next;
     });
     setLayoutDirty(true);
     setNotice('Layout changed · not saved yet');
@@ -556,15 +562,21 @@ function AtlasWorkbench() {
 
   const handleSaveLayout = () => {
     if (!layoutUnlocked) return;
-    saveExperienceState(state);
-    setLayoutBaseline(clone(active.layout));
+    const currentState = stateRef.current;
+    const currentLayout = mode === 'draft' ? currentState.draft.layout : currentState.published.layout;
+    saveExperienceState(currentState);
+    setLayoutBaseline(clone(currentLayout));
     setLayoutDirty(false);
     setNotice('Personal layout saved');
   };
 
   const handleRestoreLayout = () => {
     if (!layoutUnlocked || !layoutBaseline) return;
-    setState((current) => replaceActiveLayout(current, mode, clone(layoutBaseline)));
+    setState((current) => {
+      const next = replaceActiveLayout(current, mode, clone(layoutBaseline));
+      stateRef.current = next;
+      return next;
+    });
     setLayoutDirty(false);
     setNotice('Restored last saved personal layout');
   };
@@ -573,7 +585,11 @@ function AtlasWorkbench() {
     if (!layoutUnlocked) return;
     if (layoutDirty && !window.confirm('Discard unsaved layout changes and lock the layout?')) return;
     if (layoutDirty && layoutBaseline) {
-      setState((current) => replaceActiveLayout(current, mode, clone(layoutBaseline)));
+      setState((current) => {
+        const next = replaceActiveLayout(current, mode, clone(layoutBaseline));
+        stateRef.current = next;
+        return next;
+      });
     }
     setLayoutUnlocked(false);
     setLayoutDirty(false);
