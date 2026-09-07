@@ -1,6 +1,7 @@
 import {
   ONLINE_WORKSPACE_ID,
   createOnlineSeedState,
+  normalizeExperienceState,
   validateExperienceState,
 } from './state.js';
 
@@ -71,7 +72,7 @@ async function getState(db, workspaceId) {
 
   let state;
   try {
-    state = JSON.parse(row.state_json);
+    state = normalizeExperienceState(JSON.parse(row.state_json));
   } catch {
     throw new Error(`Stored state for Workspace ${workspaceId} is invalid JSON.`);
   }
