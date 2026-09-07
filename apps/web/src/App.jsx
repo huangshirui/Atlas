@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
+  ControlButton,
   Controls,
   MarkerType,
   MiniMap,
@@ -494,7 +495,7 @@ function AtlasWorkbench() {
       y: params.y,
       width: params.width,
       height: params.height,
-    }, `Resized ${unitId} · Unsaved personal layout`);
+    }, `Resized ${unitId} · Unsaved layout`);
   };
 
   const handleToggleCollapsed = (unitId) => {
@@ -573,7 +574,7 @@ function AtlasWorkbench() {
     saveExperienceState(currentState);
     setLayoutBaseline(clone(currentLayout));
     setLayoutDirty(false);
-    setNotice('Personal layout saved');
+    setNotice('Layout saved');
   };
 
   const handleRestoreLayout = () => {
@@ -584,7 +585,7 @@ function AtlasWorkbench() {
       return next;
     });
     setLayoutDirty(false);
-    setNotice('Restored last saved personal layout');
+    setNotice('Restored last saved layout');
   };
 
   const handleLockLayout = () => {
@@ -685,7 +686,7 @@ function AtlasWorkbench() {
 
   const handleNodeDragStop = (_event, node) => {
     if (!layoutUnlocked || node.id === active.model.root_unit_id) return;
-    patchActiveLayout(node.id, { x: node.position.x, y: node.position.y }, `Moved ${node.id} · Unsaved personal layout`);
+    patchActiveLayout(node.id, { x: node.position.x, y: node.position.y }, `Moved ${node.id} · Unsaved layout`);
   };
 
   const handleConnect = (connection) => {
@@ -798,16 +799,6 @@ function AtlasWorkbench() {
 
         <div className="topbar__actions">
           <span className="local-badge">Local Experience</span>
-          {layoutUnlocked ? (
-            <>
-              <span className="local-badge">{layoutDirty ? 'Layout · Unsaved' : 'Layout · Unlocked'}</span>
-              <button className="button button--primary" disabled={!layoutDirty} onClick={handleSaveLayout}>Save Layout</button>
-              <button className="button button--secondary" disabled={!layoutDirty} onClick={handleRestoreLayout}>Restore</button>
-              <button className="button button--ghost" onClick={handleLockLayout}>Lock</button>
-            </>
-          ) : (
-            <button className="button button--secondary" onClick={handleUnlockLayout}>Unlock Layout</button>
-          )}
           {mode === 'published' ? (
             <button
               className={`button button--secondary ${changes.length ? 'draft-change-button' : ''}`}
@@ -873,7 +864,35 @@ function AtlasWorkbench() {
         >
           <Background gap={24} size={1} />
           <MiniMap pannable zoomable />
-          <Controls showInteractive={false} />
+          <Controls showInteractive={false}>
+            <ControlButton
+              onClick={layoutUnlocked ? handleLockLayout : handleUnlockLayout}
+              title={layoutUnlocked ? 'Lock layout' : 'Unlock layout'}
+              aria-label={layoutUnlocked ? 'Lock layout' : 'Unlock layout'}
+            >
+              {layoutUnlocked ? '🔓' : '🔒'}
+            </ControlButton>
+            {layoutUnlocked && (
+              <>
+                <ControlButton
+                  onClick={handleRestoreLayout}
+                  disabled={!layoutDirty}
+                  title="Restore last saved layout"
+                  aria-label="Restore last saved layout"
+                >
+                  ↶
+                </ControlButton>
+                <ControlButton
+                  onClick={handleSaveLayout}
+                  disabled={!layoutDirty}
+                  title={layoutDirty ? 'Save layout' : 'Layout is saved'}
+                  aria-label="Save layout"
+                >
+                  ✓
+                </ControlButton>
+              </>
+            )}
+          </Controls>
         </ReactFlow>
 
         {(notice || error) && <div className={`toast ${error ? 'toast--error' : ''}`}>{error || notice}</div>}
