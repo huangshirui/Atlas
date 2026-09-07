@@ -257,8 +257,6 @@ export function createAisrEcosystemLayout() {
     id: 'layout.aisr-ecosystem.experiment',
     workspace_id: WORKSPACE_ID,
     target: { kind: 'revision', id: 'revision.aisr-ecosystem.experiment' },
-    kind: 'personal',
-    owner: { kind: 'human', id: 'local-user' },
     nodes: [
       layoutNode('aisr.ecosystem', 20, 20, 3100, 2060),
 
