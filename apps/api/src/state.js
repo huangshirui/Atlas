@@ -14,6 +14,12 @@ export function createOnlineSeedState(workspaceId) {
   return createAisrWorkspaceExperienceState();
 }
 
+function validateSingleLayoutShape(layout, label, errors) {
+  if ('kind' in layout || 'owner' in layout) {
+    errors.push(`${label} layout must use the V0.1 single-layout shape without kind or owner.`);
+  }
+}
+
 export function validateExperienceState(state, workspaceId = ONLINE_WORKSPACE_ID) {
   const errors = [];
 
@@ -63,6 +69,8 @@ export function validateExperienceState(state, workspaceId = ONLINE_WORKSPACE_ID
   if (state.draft.layout.target?.kind !== 'draft' || state.draft.layout.target?.id !== state.draft.draftId) {
     errors.push('Draft layout must target the active draft.');
   }
+  validateSingleLayoutShape(state.published.layout, 'Published', errors);
+  validateSingleLayoutShape(state.draft.layout, 'Draft', errors);
 
   errors.push(...validateModel(state.published.model));
   errors.push(...validateModel(state.draft.model));
