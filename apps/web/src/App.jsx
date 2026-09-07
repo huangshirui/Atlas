@@ -38,6 +38,13 @@ import { loadExperienceState, resetExperienceState, saveExperienceState } from '
 const nodeTypes = { unit: UnitNode };
 const WORKSPACE_OPTIONS = [{ id: 'atlas', name: 'AISR Ecosystem' }];
 const IN_PROGRESS_WORK_STATUSES = new Set(['active', 'reviewing', 'blocked']);
+const clone = (value) => JSON.parse(JSON.stringify(value));
+
+function replaceActiveLayout(state, mode, layout) {
+  return mode === 'draft'
+    ? { ...state, draft: { ...state.draft, layout } }
+    : { ...state, published: { ...state.published, layout } };
+}
 
 function depthFor(unit, model) {
   let depth = 0;
@@ -78,7 +85,7 @@ function minimumSize(unitId, model, layout) {
   return { minWidth, minHeight };
 }
 
-function toFlowNodes(model, layout, semanticReadOnly, changedTargets, highlightDraftChanges, workStates, handlers) {
+function toFlowNodes(model, layout, semanticReadOnly, changedTargets, highlightDraftChanges, workStates, layoutUnlocked, handlers) {
   const childCounts = new Map();
   for (const current of model.units) {
     if (current.parent_id) childCounts.set(current.parent_id, (childCounts.get(current.parent_id) ?? 0) + 1);
@@ -116,11 +123,12 @@ function toFlowNodes(model, layout, semanticReadOnly, changedTargets, highlightD
         position: { x: saved.x, y: saved.y },
         parentId: current.parent_id ?? undefined,
         extent: current.parent_id ? 'parent' : undefined,
-        draggable: !isRoot,
+        draggable: layoutUnlocked && !isRoot,
         selectable: true,
         data: {
           unit: current,
           semanticReadOnly,
+          layoutUnlocked,
           changed: highlightDraftChanges && changedTargets.has(current.id),
           hasChildren: (childCounts.get(current.id) ?? 0) > 0,
           childCount: childCounts.get(current.id) ?? 0,
@@ -438,6 +446,9 @@ function AtlasWorkbench() {
   const [diffOpen, setDiffOpen] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  const [layoutUnlocked, setLayoutUnlocked] = useState(false);
+  const [layoutDirty, setLayoutDirty] = useState(false);
+  const [layoutBaseline, setLayoutBaseline] = useState(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
 
   const changes = useMemo(() => diffModels(state.published.model, state.draft.model), [state]);
@@ -451,6 +462,7 @@ function AtlasWorkbench() {
   ), [changes]);
   const active = mode === 'draft' ? state.draft : state.published;
   const semanticReadOnly = mode === 'published';
+  const effectiveSemanticReadOnly = semanticReadOnly || layoutUnlocked;
   const highlightDraftChanges = mode === 'draft';
   const selectedUnit = active.model.units.find((current) => current.id === selectedUnitId) ?? null;
   const selectedRelationship = active.model.relationships.find((current) => current.id === selectedRelationshipId) ?? null;
@@ -459,15 +471,15 @@ function AtlasWorkbench() {
   const inspectorOpen = Boolean(inspectorMode);
 
   const patchActiveLayout = (unitId, patch, message) => {
+    if (!layoutUnlocked) return;
     setState((current) => {
       const target = mode === 'draft' ? current.draft : current.published;
       const model = mode === 'draft' ? current.draft.model : current.published.model;
       let layout = updateLayoutNode(target.layout, unitId, patch);
       layout = fitAncestorsToLayout(layout, model, unitId);
-      return mode === 'draft'
-        ? { ...current, draft: { ...current.draft, layout } }
-        : { ...current, published: { ...current.published, layout } };
+      return replaceActiveLayout(current, mode, layout);
     });
+    setLayoutDirty(true);
     setNotice(message);
   };
 
@@ -477,33 +489,37 @@ function AtlasWorkbench() {
       y: params.y,
       width: params.width,
       height: params.height,
-    }, `Resized ${unitId} · Personal layout only`);
+    }, `Resized ${unitId} · Unsaved personal layout`);
   };
 
   const handleToggleCollapsed = (unitId) => {
+    if (!layoutUnlocked) return;
     setState((current) => {
       const target = mode === 'draft' ? current.draft : current.published;
       const layout = toggleLayoutCollapsed(target.layout, unitId);
-      return mode === 'draft'
-        ? { ...current, draft: { ...current.draft, layout } }
-        : { ...current, published: { ...current.published, layout } };
+      return replaceActiveLayout(current, mode, layout);
     });
-    setNotice('Updated personal layout');
+    setLayoutDirty(true);
+    setNotice('Layout changed · not saved yet');
   };
 
-  useEffect(() => saveExperienceState(state), [state]);
+  useEffect(() => {
+    if (!layoutUnlocked) saveExperienceState(state);
+  }, [state, layoutUnlocked]);
+
   useEffect(() => {
     const nextNodes = toFlowNodes(
       active.model,
       active.layout,
-      semanticReadOnly,
+      effectiveSemanticReadOnly,
       changedNodeTargets,
       highlightDraftChanges,
       state.workStates ?? [],
+      layoutUnlocked,
       { onResizeEnd: handleResizeEnd, onToggleCollapsed: handleToggleCollapsed },
     );
     setNodes(nextNodes);
-  }, [active.model, active.layout, semanticReadOnly, changedNodeTargets, highlightDraftChanges, state.workStates, setNodes]);
+  }, [active.model, active.layout, effectiveSemanticReadOnly, changedNodeTargets, highlightDraftChanges, state.workStates, layoutUnlocked, setNodes]);
 
   const visibleNodeIds = useMemo(() => new Set(nodes.map((node) => node.id)), [nodes]);
   const edges = useMemo(
@@ -529,7 +545,44 @@ function AtlasWorkbench() {
     setInspectorMode(null);
   };
 
+  const handleUnlockLayout = () => {
+    if (layoutUnlocked) return;
+    setLayoutBaseline(clone(active.layout));
+    setLayoutDirty(false);
+    setLayoutUnlocked(true);
+    closeInspector();
+    setNotice('Layout unlocked · changes will not save automatically');
+  };
+
+  const handleSaveLayout = () => {
+    if (!layoutUnlocked) return;
+    saveExperienceState(state);
+    setLayoutBaseline(clone(active.layout));
+    setLayoutDirty(false);
+    setNotice('Personal layout saved');
+  };
+
+  const handleRestoreLayout = () => {
+    if (!layoutUnlocked || !layoutBaseline) return;
+    setState((current) => replaceActiveLayout(current, mode, clone(layoutBaseline)));
+    setLayoutDirty(false);
+    setNotice('Restored last saved personal layout');
+  };
+
+  const handleLockLayout = () => {
+    if (!layoutUnlocked) return;
+    if (layoutDirty && !window.confirm('Discard unsaved layout changes and lock the layout?')) return;
+    if (layoutDirty && layoutBaseline) {
+      setState((current) => replaceActiveLayout(current, mode, clone(layoutBaseline)));
+    }
+    setLayoutUnlocked(false);
+    setLayoutDirty(false);
+    setLayoutBaseline(null);
+    setNotice('Layout locked');
+  };
+
   const enterDraft = ({ openChanges = false } = {}) => {
+    if (layoutUnlocked) return;
     setState((current) => syncDraftLayoutFromPublished(current));
     setMode('draft');
     setDiffOpen(openChanges);
@@ -538,6 +591,7 @@ function AtlasWorkbench() {
   };
 
   const leaveDraft = () => {
+    if (layoutUnlocked) return;
     setMode('published');
     setDiffOpen(false);
     closeInspector();
@@ -545,6 +599,10 @@ function AtlasWorkbench() {
   };
 
   const commitDraftModel = (model, layout = state.draft.layout, message = 'Draft updated') => {
+    if (layoutUnlocked) {
+      setError('Lock the layout before editing Definition data.');
+      return false;
+    }
     const errors = [
       ...validateModel(model),
       ...validateStateReferences(model, state.runtimeStates ?? [], state.workStates ?? []),
@@ -587,6 +645,7 @@ function AtlasWorkbench() {
   };
 
   const handleAddUnit = (input) => {
+    if (layoutUnlocked) return;
     try {
       const normalized = { ...input, id: input.id.trim(), name: input.name.trim() };
       if (!normalized.id || !normalized.name) throw new Error('Stable ID and Name are required.');
@@ -603,12 +662,12 @@ function AtlasWorkbench() {
   };
 
   const handleNodeDragStop = (_event, node) => {
-    if (node.id === active.model.root_unit_id) return;
-    patchActiveLayout(node.id, { x: node.position.x, y: node.position.y }, `Moved ${node.id} · Personal layout only`);
+    if (!layoutUnlocked || node.id === active.model.root_unit_id) return;
+    patchActiveLayout(node.id, { x: node.position.x, y: node.position.y }, `Moved ${node.id} · Unsaved personal layout`);
   };
 
   const handleConnect = (connection) => {
-    if (mode !== 'draft' || !connection.source || !connection.target) return;
+    if (layoutUnlocked || mode !== 'draft' || !connection.source || !connection.target) return;
     const type = 'calls';
     setPendingRelationship({
       id: suggestRelationshipId(state.draft.model, connection.source, connection.target, type),
@@ -656,6 +715,7 @@ function AtlasWorkbench() {
   };
 
   const handleDeleteRelationship = (relationship) => {
+    if (layoutUnlocked) return;
     if (!window.confirm(`Delete Relationship ${relationship.id}?`)) return;
     try {
       const nextModel = removeRelationship(state.draft.model, relationship.id);
@@ -666,7 +726,7 @@ function AtlasWorkbench() {
   };
 
   const handlePublish = () => {
-    if (!changes.length) return;
+    if (layoutUnlocked || !changes.length) return;
     if (!window.confirm(`Publish current Draft as Revision ${state.revisionNumber + 1}?`)) return;
     try {
       const next = publishExperienceState(state);
@@ -682,6 +742,7 @@ function AtlasWorkbench() {
   };
 
   const handleReset = () => {
+    if (layoutUnlocked) return;
     if (!window.confirm('Reset local Atlas experience data?')) return;
     setState(resetExperienceState());
     setMode('published');
@@ -715,19 +776,45 @@ function AtlasWorkbench() {
 
         <div className="topbar__actions">
           <span className="local-badge">Local Experience</span>
+          {layoutUnlocked ? (
+            <>
+              <span className="local-badge">{layoutDirty ? 'Layout · Unsaved' : 'Layout · Unlocked'}</span>
+              <button className="button button--primary" disabled={!layoutDirty} onClick={handleSaveLayout}>Save Layout</button>
+              <button className="button button--secondary" disabled={!layoutDirty} onClick={handleRestoreLayout}>Restore</button>
+              <button className="button button--ghost" onClick={handleLockLayout}>Lock</button>
+            </>
+          ) : (
+            <button className="button button--secondary" onClick={handleUnlockLayout}>Unlock Layout</button>
+          )}
           {mode === 'published' ? (
-            <button className={`button button--secondary ${changes.length ? 'draft-change-button' : ''}`} onClick={() => enterDraft({ openChanges: changes.length > 0 })}>
+            <button
+              className={`button button--secondary ${changes.length ? 'draft-change-button' : ''}`}
+              disabled={layoutUnlocked}
+              onClick={() => enterDraft({ openChanges: changes.length > 0 })}
+            >
               {changes.length ? `Review Draft · ${changes.length}` : 'Edit Draft'}
             </button>
           ) : (
             <>
-              <button className="button button--secondary" onClick={() => { setInspectorMode('add'); setSelectedUnitId(null); setSelectedRelationshipId(null); }}>+ Unit</button>
-              <button className="button button--ghost" onClick={leaveDraft}>Back</button>
-              <button className={`button button--secondary changes-button ${diffOpen ? 'is-active' : ''}`} onClick={() => setDiffOpen((open) => !open)}>Changes · {changes.length}</button>
-              {changes.length > 0 && <button className="button button--primary" onClick={handlePublish}>Publish</button>}
+              <button
+                className="button button--secondary"
+                disabled={layoutUnlocked}
+                onClick={() => { setInspectorMode('add'); setSelectedUnitId(null); setSelectedRelationshipId(null); }}
+              >
+                + Unit
+              </button>
+              <button className="button button--ghost" disabled={layoutUnlocked} onClick={leaveDraft}>Back</button>
+              <button
+                className={`button button--secondary changes-button ${diffOpen ? 'is-active' : ''}`}
+                disabled={layoutUnlocked}
+                onClick={() => setDiffOpen((open) => !open)}
+              >
+                Changes · {changes.length}
+              </button>
+              {changes.length > 0 && <button className="button button--primary" disabled={layoutUnlocked} onClick={handlePublish}>Publish</button>}
             </>
           )}
-          <button className="button button--ghost" onClick={handleReset}>Reset</button>
+          <button className="button button--ghost" disabled={layoutUnlocked} onClick={handleReset}>Reset</button>
         </div>
       </header>
 
@@ -753,7 +840,9 @@ function AtlasWorkbench() {
           }}
           onConnect={handleConnect}
           onPaneClick={closeInspector}
-          nodesConnectable={!semanticReadOnly}
+          nodesDraggable={layoutUnlocked}
+          nodesConnectable={!effectiveSemanticReadOnly}
+          panOnDrag={!layoutUnlocked}
           fitView
           fitViewOptions={{ padding: 0.08 }}
           minZoom={0.2}
@@ -773,7 +862,7 @@ function AtlasWorkbench() {
               <UnitInspector
                 unit={selectedUnit}
                 model={active.model}
-                semanticReadOnly={semanticReadOnly}
+                semanticReadOnly={effectiveSemanticReadOnly}
                 runtimeState={runtimeState}
                 workState={workState}
                 onSave={handleSaveUnit}
@@ -782,13 +871,13 @@ function AtlasWorkbench() {
                 error={error}
               />
             )}
-            {inspectorMode === 'add' && mode === 'draft' && <AddUnitInspector model={state.draft.model} onAdd={handleAddUnit} onClose={closeInspector} />}
+            {inspectorMode === 'add' && mode === 'draft' && !layoutUnlocked && <AddUnitInspector model={state.draft.model} onAdd={handleAddUnit} onClose={closeInspector} />}
             {(inspectorMode === 'relationship' || inspectorMode === 'relationship-new') && (
               <RelationshipInspector
                 relationship={selectedRelationship}
                 pending={pendingRelationship}
                 model={active.model}
-                semanticReadOnly={semanticReadOnly}
+                semanticReadOnly={effectiveSemanticReadOnly}
                 onSave={handleSaveRelationship}
                 onCreate={handleCreateRelationship}
                 onDelete={handleDeleteRelationship}
