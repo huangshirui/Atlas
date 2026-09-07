@@ -33,7 +33,7 @@ V0.3 至少应完成：
 2. D1 在首次访问时可以安全初始化 Synthetic Seed（合成种子数据）；
 3. Web 可以从 API 加载 Published / Draft / Layout / Runtime State / Work State；
 4. Web 的定义编辑和 Publish 行为可以持久化到 D1；Layout 默认锁定，只有显式解锁后才允许调整 Unit Layout，并且拖动 / Resize / Collapse 不自动持久化，必须通过明确的 `Save Layout` 操作保存；
-5. Layout 编辑态支持 `Restore`，用于丢弃本次未保存变化并恢复到上次保存的 Personal Layout；此动作与“恢复到 Default Layout”保持语义分离；
+5. Layout 编辑态支持 `Restore`，用于丢弃自最近一次保存以来尚未保存的变化并恢复到最近一次保存的 Personal Layout；此动作与“恢复到 Default Layout”保持语义分离；
 6. 页面刷新、关闭浏览器后重新打开，已显式保存的状态仍然存在；
 7. API 在写入前复用 `packages/domain` 的领域校验，而不是信任 Web；
 8. 写入带 Optimistic Concurrency（乐观并发控制），避免不同标签页静默覆盖较新的在线状态；
@@ -66,7 +66,8 @@ V0.3 先以受校验的 Workspace Experience Snapshot（工作区体验快照）
 - D1 中的 Atlas API 状态是当前在线体验的事实源；
 - Browser Local Storage 不作为在线状态的第二事实源；
 - API 不可用时，Web 应明确显示失败，而不是静默切回本地并形成分叉状态；
-- Layout 解锁后的未保存 Working Copy 只存在于当前 Web 会话内，不属于持久化事实；只有显式 `Save Layout` 后才写入当前 Personal Layout。
+- Layout 解锁后的未保存 Working Copy 只存在于当前 Web 会话内，不属于持久化事实；只有显式 `Save Layout` 后才写入当前 Personal Layout；
+- 每次 `Save Layout` 后，已保存的 Personal Layout 立即成为当前编辑会话新的 Restore Baseline（恢复基线）。
 
 ### 4.2 Local development（本地开发）
 
