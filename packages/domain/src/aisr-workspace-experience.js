@@ -17,8 +17,14 @@ function rebindStateWorkspace(current) {
 }
 
 function rebindLayout(baseLayout, target) {
+  const {
+    kind: _legacyKind,
+    owner: _legacyOwner,
+    ...layout
+  } = clone(baseLayout);
+
   return {
-    ...clone(baseLayout),
+    ...layout,
     id: `layout.atlas.${target.kind}.${target.id.replaceAll('.', '_')}`,
     workspace_id: WORKSPACE_ID,
     target,
