@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   ONLINE_WORKSPACE_ID,
   createOnlineSeedState,
@@ -53,5 +54,16 @@ assert.throws(
   /Unsupported Workspace/,
   'V0.3 online seed must not pretend unsupported Workspace persistence exists',
 );
+
+const appSource = readFileSync(new URL('../apps/web/src/App.jsx', import.meta.url), 'utf8');
+const unitNodeSource = readFileSync(new URL('../apps/web/src/UnitNode.jsx', import.meta.url), 'utf8');
+assert.match(appSource, /const \[layoutUnlocked, setLayoutUnlocked\] = useState\(false\)/, 'Layout must start locked');
+assert.match(appSource, /nodesDraggable=\{layoutUnlocked\}/, 'Unit dragging must require explicit layout unlock');
+assert.match(appSource, /panOnDrag=\{!layoutUnlocked\}/, 'Locked pointer dragging must pan the canvas');
+assert.match(appSource, /if \(!layoutUnlocked\) saveExperienceState\(state\)/, 'Unsaved layout editing must bypass automatic persistence');
+assert.match(appSource, />Save Layout<\//, 'Unlocked layout editing must expose an explicit Save Layout action');
+assert.match(appSource, />Restore<\//, 'Unlocked layout editing must expose an explicit Restore action');
+assert.match(unitNodeSource, /isVisible=\{layoutUnlocked && selected && !collapsed\}/, 'Resize handles must stay hidden while layout is locked');
+assert.match(unitNodeSource, /hasChildren && !isRoot && layoutUnlocked/, 'Collapse and expand must be layout-edit actions');
 
 console.log('Online Experience V0.3 validation passed.');
