@@ -44,9 +44,24 @@ AISR Atlas V0.1 必须严格区分三类数据：
 > **Position is not semantics.**  
 > 位置不是语义。
 
-## 3. Canvas 拖动规则
+## 3. Canvas 拖动与 Layout 编辑规则
 
-Canvas 上的普通拖动只修改 Layout。
+Canvas 的浏览状态与 Layout 编辑必须显式区分。
+
+默认状态为 **Layout Locked（布局锁定）**：
+
+- Unit 不可拖动、Resize 或 Collapse / Expand；
+- 主按钮拖动用于平移 Canvas，以查看当前图谱的不同区域；
+- 浏览过程中的临时 Viewport 移动不应被误认为 Unit Layout 修改。
+
+只有用户显式执行 **Unlock Layout（解锁布局）** 后，才进入 Layout 编辑态：
+
+- 拖动 Unit、调整尺寸、展开 / 折叠只修改 Layout；
+- 这些操作不得改变 Parent、Type、Containment、Relationship 或其他 Canonical Model 数据；
+- Layout 编辑态中的变化先进入未保存 Working Copy（工作副本），不得因为拖动完成就自动持久化；
+- 用户显式执行 `Save Layout` 后，才保存当前 Personal Layout；
+- 用户执行 `Restore` 时，丢弃本次尚未保存的 Layout 变化，恢复到上次保存的 Personal Layout；
+- 如果用户在存在未保存 Layout 变化时重新锁定，应显式确认是否丢弃，而不是静默保存。
 
 不得因为以下行为隐式改变 Canonical Model：
 
@@ -176,9 +191,21 @@ Model Target
 
 ### 个人布局（Personal Layout）
 
-- 普通用户拖动优先修改 Personal Layout；
+- 普通用户显式解锁 Layout 后，拖动优先修改 Personal Layout 的未保存 Working Copy；
+- 只有显式 `Save Layout` 才更新已保存的 Personal Layout；
 - 可以一键恢复为同一 Model Target 的 Default Layout；
 - 不影响 Canonical Model。
+
+### `Restore` 与“恢复 Default Layout”不是同一个动作
+
+V0.1 区分两种恢复语义：
+
+1. **Restore current edit session**：丢弃本次尚未保存的 Layout 改动，回到上次保存的 Personal Layout；
+2. **Reset Personal Layout to Default**：将 Personal Layout 恢复为同一 Model Target 的 Default Layout。
+
+二者不得在 UI / Tool 语义上混为一个动作。
+
+当前 Online Experience V0.3 已实现第一种 `Restore`；Default Layout 与 Personal Layout 的领域 / Schema 区分仍然保留，但“恢复 Default Layout”的独立 Web 操作尚未在当前体验中落地，不得把当前 `Restore` 描述为恢复 Default Layout。
 
 ## 10. Draft Working Layout 与 Revision Layout
 
