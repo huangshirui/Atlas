@@ -14,6 +14,31 @@ export function createOnlineSeedState(workspaceId) {
   return createAisrWorkspaceExperienceState();
 }
 
+function normalizeLayout(layout) {
+  if (!layout) return layout;
+  const {
+    kind: _legacyKind,
+    owner: _legacyOwner,
+    ...normalized
+  } = layout;
+  return normalized;
+}
+
+export function normalizeExperienceState(state) {
+  if (!state?.published || !state?.draft) return state;
+  return {
+    ...state,
+    published: {
+      ...state.published,
+      layout: normalizeLayout(state.published.layout),
+    },
+    draft: {
+      ...state.draft,
+      layout: normalizeLayout(state.draft.layout),
+    },
+  };
+}
+
 function validateSingleLayoutShape(layout, label, errors) {
   if ('kind' in layout || 'owner' in layout) {
     errors.push(`${label} layout must use the V0.1 single-layout shape without kind or owner.`);
