@@ -84,6 +84,8 @@ Layout 的 Lock / Unlock、Save、Restore 属于 Canvas 操作，应与 Zoom / F
 - 移动 Parent 时，Child 作为整体随 Parent 移动；
 - Child 的位置优先保存为相对 Parent 的坐标。
 
+对于 AI、Seed（种子）或导入过程生成的**初始 Layout**，还应在交付给用户前执行几何质量检查：同一 Parent 下的 Sibling Unit 不应互相重叠，并应保留基本可读间距；所有 Child 的矩形边界必须位于 Parent 容器内。该检查约束的是自动生成结果质量，不改变“Position is not semantics”，也不把几何位置反向解释成 Parent 或 Relationship。
+
 ## 5. Draft 模型
 
 每个 Workspace 同时只有：
