@@ -1,13 +1,11 @@
 {
   "schema_version": "0.1",
-  "id": "layout.atlas.draft.default",
+  "id": "layout.atlas.draft",
   "workspace_id": "atlas",
   "target": {
     "kind": "draft",
     "id": "draft.atlas.v0_1"
   },
-  "kind": "default",
-  "owner": null,
   "nodes": [
     {
       "unit_id": "atlas",

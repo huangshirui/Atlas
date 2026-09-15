@@ -1,9 +1,9 @@
 import {
   SCHEMA_VERSION,
-  createInitialExperienceState,
   validateModel,
   validateStateReferences,
 } from '../../../packages/domain/src/index.js';
+import { createAisrWorkspaceExperienceState } from '../../../packages/domain/src/aisr-workspace-experience.js';
 
 export const ONLINE_WORKSPACE_ID = 'atlas';
 
@@ -11,7 +11,38 @@ export function createOnlineSeedState(workspaceId) {
   if (workspaceId !== ONLINE_WORKSPACE_ID) {
     throw new Error(`Unsupported Workspace: ${workspaceId}`);
   }
-  return createInitialExperienceState();
+  return createAisrWorkspaceExperienceState();
+}
+
+function normalizeLayout(layout) {
+  if (!layout) return layout;
+  const {
+    kind: _legacyKind,
+    owner: _legacyOwner,
+    ...normalized
+  } = layout;
+  return normalized;
+}
+
+export function normalizeExperienceState(state) {
+  if (!state?.published || !state?.draft) return state;
+  return {
+    ...state,
+    published: {
+      ...state.published,
+      layout: normalizeLayout(state.published.layout),
+    },
+    draft: {
+      ...state.draft,
+      layout: normalizeLayout(state.draft.layout),
+    },
+  };
+}
+
+function validateSingleLayoutShape(layout, label, errors) {
+  if ('kind' in layout || 'owner' in layout) {
+    errors.push(`${label} layout must use the V0.1 single-layout shape without kind or owner.`);
+  }
 }
 
 export function validateExperienceState(state, workspaceId = ONLINE_WORKSPACE_ID) {
@@ -63,6 +94,8 @@ export function validateExperienceState(state, workspaceId = ONLINE_WORKSPACE_ID
   if (state.draft.layout.target?.kind !== 'draft' || state.draft.layout.target?.id !== state.draft.draftId) {
     errors.push('Draft layout must target the active draft.');
   }
+  validateSingleLayoutShape(state.published.layout, 'Published', errors);
+  validateSingleLayoutShape(state.draft.layout, 'Draft', errors);
 
   errors.push(...validateModel(state.published.model));
   errors.push(...validateModel(state.draft.model));

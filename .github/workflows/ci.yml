@@ -59,6 +59,9 @@ jobs:
       - name: Validate Domain behavior
         run: npm run test:domain
 
+      - name: Validate AISR ecosystem architecture experiment
+        run: npm run test:aisr-ecosystem
+
       - name: Validate Online Experience V0.3
         run: npm run test:online
 

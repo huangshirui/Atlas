@@ -17,7 +17,7 @@ AISR Atlas V0.1 的 Machine-readable Schema（机器可读模式）目录。
 - `draft.schema.json`：Active Draft（活动草稿），不内嵌完整 Change Log（变更日志）；
 - `revision.schema.json`：Published Revision（已发布修订版本）；
 - `change-log-entry.schema.json`：单次可归因的定义性 Mutation（变更）；
-- `layout.schema.json`：Default / Personal Layout（默认 / 个人布局）；
+- `layout.schema.json`：绑定 Draft / Revision Model Target 的唯一 Layout（布局）；
 - `runtime-state.schema.json`：Runtime State（运行性当前状态）；
 - `work-state.schema.json`：Work State（工作性当前状态）。
 
@@ -31,7 +31,7 @@ Schema 负责单文档的数据形状和可组合引用；以下 Graph Invariant
 - Relationship 两端 Unit 存在且属于同一 Workspace；
 - 稳定 ID 在对应作用域唯一；
 - Custom Type（自定义类型）必须先在 Canonical Model 的 `custom_types` 注册；
-- Default / Personal Layout 的唯一性与 Owner（所有者）约束；
+- 每个 Model Target 在 V0.1 只维护一份持久化 Layout；
 - Layout 中的 Unit 必须属于目标 Draft / Revision（草稿 / 修订版本）。
 
 ## Definition / Runtime / Work（三类数据）
@@ -50,6 +50,8 @@ Schema 负责单文档的数据形状和可组合引用；以下 Graph Invariant
 
 - `draft`：Active Draft 的 Working Layout（工作布局）；
 - `revision`：Published Revision 的正式 Layout（正式布局）。
+
+V0.1 不再区分 Default Layout / Personal Layout。Web 解锁布局后的未保存修改属于当前会话的临时 Working Copy，不进入 `layout.schema.json`；只有显式保存后才覆盖该 Model Target 当前唯一的持久化 Layout。
 
 Publish（发布）时将当前 Draft Working Layout 固化到新 Revision。V0.1 仍不进行两个 Published Revision 之间的自动 Layout Migration（布局迁移）。
 

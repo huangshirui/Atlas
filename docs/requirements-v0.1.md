@@ -40,18 +40,23 @@ V0.1 的目标不是“画出一张漂亮架构图”，而是建立一份人和
 - 大 Unit 可以包含小 Unit，表现包含 / 层级关系（Containment）；
 - Unit 可以通过连线表现关系（Relationship）；
 - 支持缩放、平移、展开 / 折叠；
-- 用户可以拖动 Unit 调整查看习惯；
+- Layout 默认锁定，锁定时在 Unit 上拖动也用于平移 Canvas；
+- 用户显式解锁后才可以拖动、Resize、Collapse / Expand Unit；
+- 解锁后的 Layout 修改先保留为未保存 Working Copy，不因拖动完成自动持久化；
+- 用户通过明确的 Save / Restore 操作保存 Layout 或丢弃自最近一次保存以来的修改；
 - 拖动、缩放、尺寸、折叠等只影响布局（Layout），不得隐式改变语义模型（Semantic Model）。
 
-### 3.3 默认布局与个人布局
+### 3.3 单一布局（Single Layout）
 
-每个修订版本（Revision）同时支持：
+每个 Model Target 在 V0.1 只维护一份持久化 Layout：
 
-- 默认布局（Default Layout）：初版可由 AI 生成，人和 AI 都能调整并显式保存为默认布局；
-- 个人布局（Personal Layout）：用户自己的查看习惯；
-- 个人布局可以一键恢复为默认布局；
-- Layout 与 Revision 绑定；
-- V0.1 不做跨 Revision 的布局迁移。
+- Active Draft 拥有一份 Working Layout；
+- 每个 Published Revision 拥有自己的 Revision Layout；
+- 不区分 Default Layout / Personal Layout；
+- 初始 Layout 可以由 AI、Human 或导入过程生成；
+- Layout 与对应 Draft / Revision 显式绑定；
+- V0.1 不做跨 Revision 的布局迁移；
+- 多用户个人 XY 覆盖只有在后续出现真实需求时再扩展，不作为 V0.1 基线复杂度。
 
 ### 3.4 草稿与发布
 
@@ -133,8 +138,8 @@ V0.1 完成时，应至少具备：
 - Type / Containment / Relationship；
 - 基础 Facet 模型；
 - Published + Draft + Diff + Change Log；
-- Default Layout + Personal Layout；
-- Canvas 拖动、缩放与层级展开；
+- 每个 Model Target 一份 Layout；
+- Canvas 锁定浏览、显式解锁编辑、Save / Restore、缩放与层级展开；
 - MCP / Tool 的核心读写能力；
 - Definition / Runtime State / Work State 三类数据边界；
 - 运行与工作状态初期允许由人或 AI 手工 / Tool 写入。
@@ -143,6 +148,8 @@ V0.1 完成时，应至少具备：
 
 - 跨 Workspace 关系；
 - 多个并行 Draft / 架构分支；
+- Default / Personal 双 Layout；
+- 多用户个人 Layout Override；
 - 跨 Revision 的 Layout 自动迁移；
 - 产品内复杂审批流；
 - 通用在线白板；

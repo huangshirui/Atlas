@@ -72,14 +72,14 @@ Planned Behavior（规划行为）不是 Implemented Behavior（已实现行为�
 5. Type（类型）是语义；Shape（图形）是展示。
 6. Containment（包含关系）与 Relationship（关系）是两个不同概念。
 7. Model（模型）、View（视图）与 Layout（布局）必须分离。
-8. Canvas（画布）拖动只改变 Layout，不得隐式改变 Parent、Type、Containment、Relationship 或其他语义数据。
+8. Canvas 默认锁定 Layout；只有显式解锁后拖动 / Resize / Collapse 才改变 Layout，且不得隐式改变 Parent、Type、Containment、Relationship 或其他语义数据。
 9. 每个 Workspace 只有一个当前 Published Revision（已发布修订版本）和一个 Active Draft（活动草稿）。
 10. Draft 可持续修改；单次编辑不会逐条产生 Published Revision。
 11. Change Log（变更日志）可按需查询，但不属于 AI 默认读取负载。
 12. Publish（发布）必须来自用户明确意图；AI 不得自主决定发布。
 13. Definition（定义性数据）、Runtime State（运行性数据）与 Work State（工作性数据）三类信息必须分离。
 14. Runtime / Work State 的变化不得产生 Definition Revision（定义修订版本）。
-15. 每个 Revision 拥有自己的 Default Layout（默认布局）与 Personal Layout（个人布局）。
+15. 每个 Model Target 在 V0.1 只维护一份持久化 Layout；不区分 Default / Personal Layout。
 16. V0.1 不进行跨 Revision 的 Layout Migration（布局迁移）。
 17. Child Unit（子单元）的视觉位置保持在 Parent（父单元）容器内；移动 Parent 时 Children（子单元）作为视觉组一起移动。
 18. V0.1 每个 Revision 只有一套空间布局；不同 View 仅切换呈现的信息侧面（Facet），不拥有独立 XY 位置。
