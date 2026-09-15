@@ -6,6 +6,34 @@ const WORKSPACE_ID = 'atlas';
 const REMOTE_PERSISTENCE = import.meta.env.VITE_ATLAS_PERSISTENCE === 'remote';
 const API_BASE_URL = (import.meta.env.VITE_ATLAS_API_BASE_URL ?? '').replace(/\/$/, '');
 
+const LEGACY_AISR_LAYOUT_FIXES = [
+  {
+    unitId: 'lifespace.client',
+    from: { x: 300, y: 420, width: 250, height: 130 },
+    to: { x: 30, y: 580, width: 250, height: 130 },
+  },
+  {
+    unitId: 'aloha.contracts',
+    from: { x: 30, y: 590, width: 220, height: 120 },
+    to: { x: 30, y: 580, width: 220, height: 120 },
+  },
+  {
+    unitId: 'aloha.capabilities',
+    from: { x: 280, y: 590, width: 220, height: 120 },
+    to: { x: 280, y: 580, width: 220, height: 120 },
+  },
+  {
+    unitId: 'aloha.runtime-n8n',
+    from: { x: 30, y: 750, width: 600, height: 130 },
+    to: { x: 30, y: 720, width: 600, height: 205 },
+  },
+  {
+    unitId: 'aloha.lifespace-tool',
+    from: { x: 300, y: 85, width: 250, height: 92 },
+    to: { x: 520, y: 80, width: 180, height: 104 },
+  },
+];
+
 let remoteState = null;
 let remoteVersion = null;
 let remoteQueue = Promise.resolve();
@@ -30,17 +58,45 @@ function normalizeLayout(layout) {
   return normalized;
 }
 
+function matchesGeometry(entry, expected) {
+  return entry
+    && entry.x === expected.x
+    && entry.y === expected.y
+    && entry.width === expected.width
+    && entry.height === expected.height;
+}
+
+function migrateLegacyAisrSeedLayout(layout) {
+  const normalized = normalizeLayout(layout);
+  if (!normalized?.nodes) return normalized;
+
+  const byUnit = new Map(normalized.nodes.map((current) => [current.unit_id, current]));
+  const matchesLegacySeed = LEGACY_AISR_LAYOUT_FIXES.every((fix) => (
+    matchesGeometry(byUnit.get(fix.unitId), fix.from)
+  ));
+  if (!matchesLegacySeed) return normalized;
+
+  const fixesByUnit = new Map(LEGACY_AISR_LAYOUT_FIXES.map((fix) => [fix.unitId, fix.to]));
+  return {
+    ...normalized,
+    nodes: normalized.nodes.map((current) => {
+      const replacement = fixesByUnit.get(current.unit_id);
+      return replacement ? { ...current, ...replacement } : current;
+    }),
+  };
+}
+
 function normalizeExperienceState(state) {
   if (!state?.published || !state?.draft) return state;
   return {
     ...state,
     published: {
       ...state.published,
-      layout: normalizeLayout(state.published.layout),
+      layout: migrateLegacyAisrSeedLayout(state.published.layout),
     },
     draft: {
       ...state.draft,
-      layout: normalizeLayout(state.draft.layout),
+      layout: migrateLegacyAisrSeedLayout(state.draft.layout),
     },
   };
 }
